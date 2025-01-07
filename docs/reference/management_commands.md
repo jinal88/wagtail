@@ -2,6 +2,18 @@
 
 # Management commands
 
+(wagtail_start)=
+
+## start
+
+By default, the `start` command creates a project template, which contains your `models.py`, templates, and settings files. For example, to create new Wagtail project named `mysite`, use the command like this:
+
+```sh
+wagtail start mysite
+```
+
+You can also use the `--template` option with the `start` command to generate a custom template. See [`The project template`](project_templates_reference) for more information on how the command works with default and custom templates.
+
 (publish_scheduled)=
 
 ## publish_scheduled
@@ -162,7 +174,7 @@ This does not remove unused rendition images, this can be done by clearing the f
 
 Options:
 
--  `--purge-only` :
+-   `--purge-only` :
     This argument will purge all image renditions without regenerating them. They will be regenerated when next requested.
 
 (convert_mariadb_uuids)=

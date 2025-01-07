@@ -588,7 +588,7 @@ class FormPage(AbstractEmailForm):
 
 (custom_form_submission_listing)=
 
-## Customise form submissions listing in Wagtail Admin
+## Customize form submissions listing in Wagtail Admin
 
 The Admin listing of form submissions can be customized by setting the attribute `submissions_list_view_class` on your FormPage model.
 
@@ -627,10 +627,6 @@ class FormPage(AbstractEmailForm):
     thank_you_text = RichTextField(blank=True)
 
     # content_panels = ...
-```
-
-```{versionchanged} 6.1
-The `SubmissionsListView` class is now a subclass of Wagtail's generic `BaseListingView`. As a result, the `ordering` attribute has been renamed to `default_ordering`.
 ```
 
 ## Adding a custom field type
@@ -828,4 +824,33 @@ class EmailFormPage(EmailFormMixin, FormMixin, BasePage):
     intro = RichTextField(blank=True)
     # ...
 
+```
+
+(form_builder_custom_admin_validation)=
+
+## Custom validation for admin form pages
+
+By default, pages that inherit from `FormMixin` will validate that each field added by an editor has a unique `clean_name`.
+
+If you need to add custom validation, create a subclass of `WagtailAdminFormPageForm` and add your own `clean` definition and set the `base_form_class` on your `Page` model.
+
+```{note}
+Validation only applies when editors use the form builder to add fields in the Wagtail admin,
+not when the form is submitted by end users.
+```
+
+```python
+from wagtail.models import Page
+from wagtail.contrib.forms.models import FormMixin, WagtailAdminFormPageForm
+
+
+class CustomWagtailAdminFormPageForm(WagtailAdminFormPageForm):
+    def clean(self):
+        cleaned_data = super().clean()
+        # Insert custom validation here, see `WagtailAdminFormPageForm.clean` for an example
+        return cleaned_data
+
+
+class FormPage(AbstractForm):
+    base_form_class = CustomWagtailAdminFormPageForm
 ```

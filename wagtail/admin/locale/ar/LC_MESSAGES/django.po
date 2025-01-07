@@ -21,7 +21,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-18 17:28+0100\n"
+"POT-Creation-Date: 2024-10-21 17:53+0100\n"
 "PO-Revision-Date: 2014-02-21 15:50+0000\n"
 "Last-Translator: Mahmoud Marayef, 2023\n"
 "Language-Team: Arabic (http://app.transifex.com/torchbox/wagtail/language/"
@@ -303,14 +303,8 @@ msgstr "الصفحة المطلوبة لم تعد متوفرة"
 msgid "Go to Wagtail admin"
 msgstr "اذهب الى لوحة تحكم Wagtail"
 
-msgid "Account"
-msgstr "حساب"
-
 msgid "More actions"
 msgstr "المزيد من الإجراءات"
-
-msgid "Save account details"
-msgstr "حِفظ تفاصيل الحساب"
 
 msgid "Reset password"
 msgstr "غير كلمة السر"
@@ -417,9 +411,6 @@ msgstr "استكشف الصفحات الفرعية %(title)s"
 msgid "Explore"
 msgstr "استكشف"
 
-msgid "Collection privacy"
-msgstr "مجموعة خصوصية"
-
 msgid "This collection has been made private by a parent collection."
 msgstr "تم جعل هذه المجموعة خاصة من قبل مجموعة الأم."
 
@@ -470,11 +461,11 @@ msgstr "نعك ألغ نشره"
 msgid "No, don't unpublish"
 msgstr "لا ,ألغ النشر"
 
-msgid "Comment"
-msgstr "تعليق"
-
 msgid "Actions"
 msgstr "النشاطات"
+
+msgid "Comment"
+msgstr "تعليق"
 
 msgid "Update"
 msgstr "حدث"
@@ -492,10 +483,6 @@ msgstr "حقل"
 msgid "Changes"
 msgstr "تغيرات"
 
-#, python-format
-msgid "Welcome to the %(site_name)s Wagtail CMS"
-msgstr "اهلا بك في %(site_name)s"
-
 msgid ""
 "This is your dashboard on which helpful information about content you've "
 "created will be displayed."
@@ -503,8 +490,14 @@ msgstr ""
 "هذه هي لوحة التحكم الخاصة بك والتي سيتم عرض معلومات مفيدة حول المحتوى الذي "
 "قمت بإنشائها."
 
+msgid "Account"
+msgstr "حساب"
+
 msgid "Your locked pages"
 msgstr "صفحاتُك المقفلة"
+
+msgid "Status"
+msgstr "رتبة"
 
 msgid "Edit this page"
 msgstr "حرر هذه الصفحة"
@@ -520,9 +513,6 @@ msgstr "مباشر"
 
 msgid "Your most recent edits"
 msgstr "أحدث تعديلاتك"
-
-msgid "Status"
-msgstr "رتبة"
 
 msgid "Date"
 msgstr "تاريخ"
@@ -579,12 +569,6 @@ msgstr "الصفحة \"%(title)s\" تم رفضها."
 
 msgid "You can preview the page here:"
 msgstr "يمكن النظر المقدم في الصفحة هنا"
-
-msgid "Page privacy"
-msgstr "خصوصية الصفحة"
-
-msgid "This page has been made private by a parent page."
-msgstr "لقد تم جعل هذه الصفحة خاصة بواسطة صفحة رئيسية."
 
 msgid "Publishing…"
 msgstr "يتم النشر..."
@@ -706,9 +690,6 @@ msgstr "انسخ"
 msgid "Copy this page"
 msgstr "انسخ هذه الصفحة"
 
-msgid "This page has unsaved changes."
-msgstr " لم يتم حفظ التعديلات على هذه الصحفه"
-
 msgid "Configure a site now."
 msgstr "تكوين موقع الآن."
 
@@ -759,9 +740,6 @@ msgstr "انواع الصفحة"
 msgid "Enter a search term above"
 msgstr "أدخل مصطلح البحث أعلاه"
 
-msgid "No pages use"
-msgstr "لا توجد صفحات تستخدم"
-
 #, python-format
 msgid "Add %(label)s"
 msgstr "اضف %(label)s"
@@ -802,6 +780,9 @@ msgstr "تحرير هذا العنصر"
 #, python-format
 msgid "Page %(page_num)s of %(total_pages)s."
 msgstr "صفحة %(page_num)s من %(total_pages)s"
+
+msgid "Continue"
+msgstr "أكمل"
 
 msgid "Download XLSX"
 msgstr "حمل XLSX"
@@ -862,14 +843,14 @@ msgstr "إضافة صفحة فرعية"
 msgid "Show in Explorer"
 msgstr "اعرض في المستكشف"
 
-msgid "Creating…"
-msgstr "يتم إنشاء..."
-
 msgid "Page"
 msgstr "صفحة"
 
 msgid "New"
 msgstr "جديد"
+
+msgid "Creating…"
+msgstr "يتم إنشاء..."
 
 msgid "Published"
 msgstr "تم نشره"
@@ -922,12 +903,12 @@ msgstr "تم تحديث المجموعة '%(object)s'."
 msgid "The collection could not be saved due to errors."
 msgstr "لا يمكن حفظ المجموعة بسبب الأخطاء."
 
-msgid "Delete collection"
-msgstr "حذف المجموعة"
-
 #, python-format
 msgid "Collection '%(object)s' deleted."
 msgstr "المجموعة '%(object)s' محذوفة."
+
+msgid "Delete collection"
+msgstr "حذف المجموعة"
 
 msgid "Are you sure you want to delete this collection?"
 msgstr "هل أنت متأكد من أنك تريد حذف هذه المجموعة؟"
@@ -965,9 +946,6 @@ msgstr "جاري التعديل"
 #, python-format
 msgid "%(model_name)s '%(object)s' deleted."
 msgstr "تم حذف '%(object)s' '%(model_name)s'."
-
-msgid "Inspecting"
-msgstr "يتم الفحص"
 
 msgid "Earliest"
 msgstr "السابقة"

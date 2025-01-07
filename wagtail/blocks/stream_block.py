@@ -89,6 +89,14 @@ class BaseStreamBlock(Block):
                 block.set_name(name)
                 self.child_blocks[name] = block
 
+    @classmethod
+    def construct_from_lookup(cls, lookup, child_blocks, **kwargs):
+        if child_blocks:
+            child_blocks = [
+                (name, lookup.get_block(index)) for name, index in child_blocks
+            ]
+        return cls(child_blocks, **kwargs)
+
     def empty_value(self, raw_text=None):
         return StreamValue(self, [], raw_text=raw_text)
 
@@ -433,6 +441,17 @@ class BaseStreamBlock(Block):
         kwargs = self._constructor_kwargs
         return (path, args, kwargs)
 
+    def deconstruct_with_lookup(self, lookup):
+        path = "wagtail.blocks.StreamBlock"
+        args = [
+            [
+                (name, lookup.add_block(block))
+                for name, block in self.child_blocks.items()
+            ]
+        ]
+        kwargs = self._constructor_kwargs
+        return (path, args, kwargs)
+
     def check(self, **kwargs):
         errors = super().check(**kwargs)
         for name, child_block in self.child_blocks.items():
@@ -691,7 +710,7 @@ class StreamValue(MutableSequence):
         raw_values = OrderedDict(
             (i, raw_item["value"])
             for i, raw_item in enumerate(self._raw_data)
-            if raw_item["type"] == type_name and self._bound_blocks[i] is None
+            if self._bound_blocks[i] is None and raw_item["type"] == type_name
         )
         # pass the raw block values to bulk_to_python as a list
         converted_values = child_block.bulk_to_python(raw_values.values())

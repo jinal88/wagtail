@@ -76,17 +76,17 @@ The following methods can be overridden on your custom `Image` or `Rendition` mo
 
 ```{eval-rst}
 .. automodule:: wagtail.images.models
-    :noindex:
+    :no-index:
 
 .. class:: AbstractImage
-    :noindex:
+    :no-index-entry:
 
     .. automethod:: get_upload_to
 
 .. class:: AbstractRendition
-    :noindex:
+    :no-index-entry:
 
     .. automethod:: get_upload_to
 ```
 
-Refer to the Django [`FileField.upload_to`](https://docs.djangoproject.com/en/stable/ref/models/fields/#django.db.models.FileField.upload_to) function to further understand how the function works.
+Refer to the Django [`FileField.upload_to`](django.db.models.FileField.upload_to) function to further understand how the function works.

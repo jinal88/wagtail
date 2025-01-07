@@ -1,9 +1,4 @@
 $(function () {
-  // prevents browser default drag/drop
-  $(document).on('drop dragover', function (e) {
-    e.preventDefault();
-  });
-
   $('#fileupload').fileupload({
     dataType: 'html',
     sequentialUploads: true,
@@ -99,7 +94,6 @@ $(function () {
     formData: function (form) {
       var filename = this.files[0].name;
       var data = { title: filename.replace(/\.[^.]+$/, '') };
-      var maxTitleLength = window.fileupload_opts.max_title_length;
 
       var event = form.get(0).dispatchEvent(
         new CustomEvent('wagtail:documents-upload', {
@@ -108,7 +102,7 @@ $(function () {
           detail: {
             data: data,
             filename: filename,
-            maxTitleLength: maxTitleLength,
+            maxTitleLength: this.maxTitleLength,
           },
         }),
       );

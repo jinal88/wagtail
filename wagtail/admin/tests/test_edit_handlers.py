@@ -1,6 +1,7 @@
+from collections.abc import Mapping
 from datetime import date, datetime, timezone
 from functools import wraps
-from typing import Any, List, Mapping, Optional
+from typing import Any, Optional
 from unittest import mock
 
 from django import forms
@@ -29,6 +30,7 @@ from wagtail.admin.panels import (
     PublishingPanel,
     TabbedInterface,
     TitleFieldPanel,
+    expand_panel_list,
     extract_panel_definitions_from_model_class,
     get_form_for_model,
 )
@@ -52,6 +54,7 @@ from wagtail.test.testapp.models import (
     FormPageWithRedirect,
     GalleryPage,
     PageChooserModel,
+    PersonPage,
     RestaurantPage,
     RestaurantTag,
     SimplePage,
@@ -845,7 +848,7 @@ class TestFieldPanel(TestCase):
     def _get_form(
         self,
         data: Optional[Mapping[str, Any]] = None,
-        fields: Optional[List[str]] = None,
+        fields: Optional[list[str]] = None,
     ) -> WagtailAdminPageForm:
         cls = get_form_for_model(
             EventPage,
@@ -1521,6 +1524,49 @@ class TestInlinePanel(WagtailTestUtils, TestCase):
                 ),
             )
 
+    def test_get_heading_and_label_from_field(self):
+        panel = InlinePanel("social_links").bind_to_model(PersonPage)
+        # Heading is the plural term, derived from the relation's related_name
+        self.assertEqual(panel.heading, "Social links")
+        # Label is the singular term, derived from the related model's verbose_name
+        self.assertEqual(panel.label, "Social link")
+
+
+class TestNonOrderableInlinePanel(WagtailTestUtils, TestCase):
+    fixtures = ["test.json"]
+
+    def setUp(self):
+        self.request = get_dummy_request()
+        user = AnonymousUser()  # technically, Anonymous users cannot access the admin
+        self.request.user = user
+
+    def test_render(self):
+        """
+        Check that the inline panel renders the panels set on the model
+        when no 'panels' parameter is passed in the InlinePanel definition
+        """
+        social_link_object_list = ObjectList(
+            [
+                InlinePanel(
+                    "social_links",
+                    label="Social Links",
+                )
+            ]
+        ).bind_to_model(PersonPage)
+        PersonPageForm = social_link_object_list.get_form_class()
+
+        person_page = PersonPage()
+        form = PersonPageForm(instance=person_page)
+        panel = social_link_object_list.get_bound_panel(
+            instance=person_page, form=form, request=self.request
+        )
+        result = panel.render_html()
+        # rendered panel must not contain hidden fields for ORDER
+        self.assertNotInHTML(
+            'id="id_social_links-__prefix__-ORDER"',
+            result,
+        )
+
 
 class TestInlinePanelGetComparison(TestCase):
     fixtures = ["test.json"]
@@ -1531,7 +1577,7 @@ class TestInlinePanelGetComparison(TestCase):
         self.request.user = user
 
     def test_get_comparison(self):
-        # Test whether the InlinePanel passes it's label in get_comparison
+        # Test whether the InlinePanel passes its heading as the label in get_comparison
 
         page = Page.objects.get(id=4).specific
         comparison = (
@@ -1542,7 +1588,7 @@ class TestInlinePanelGetComparison(TestCase):
 
         comparison = [comp(page, page) for comp in comparison]
         field_labels = [comp.field_label() for comp in comparison]
-        self.assertIn("Speakers", field_labels)
+        self.assertIn("Speaker lineup", field_labels)
 
 
 class TestInlinePanelRelatedModelPanelConfigChecks(TestCase):
@@ -1681,7 +1727,10 @@ class TestCommentPanel(WagtailTestUtils, TestCase):
         Test that the comment panel is missing if WAGTAILADMIN_COMMENTS_ENABLED=False
         """
         self.assertFalse(
-            any(isinstance(panel, CommentPanel) for panel in Page.settings_panels)
+            any(
+                isinstance(panel, CommentPanel)
+                for panel in expand_panel_list(Page, Page.settings_panels)
+            )
         )
         form_class = Page.get_edit_handler().get_form_class()
         form = form_class()
@@ -1692,7 +1741,10 @@ class TestCommentPanel(WagtailTestUtils, TestCase):
         Test that the comment panel is present by default
         """
         self.assertTrue(
-            any(isinstance(panel, CommentPanel) for panel in Page.settings_panels)
+            any(
+                isinstance(panel, CommentPanel)
+                for panel in expand_panel_list(Page, Page.settings_panels)
+            )
         )
         form_class = Page.get_edit_handler().get_form_class()
         form = form_class()
@@ -1979,7 +2031,10 @@ class TestPublishingPanel(WagtailTestUtils, TestCase):
         Test that the publishing panel is present by default
         """
         self.assertTrue(
-            any(isinstance(panel, PublishingPanel) for panel in Page.settings_panels)
+            any(
+                isinstance(panel, PublishingPanel)
+                for panel in expand_panel_list(Page, Page.settings_panels)
+            )
         )
         form_class = Page.get_edit_handler().get_form_class()
         form = form_class()
@@ -2040,7 +2095,7 @@ class TestMultipleChooserPanelGetComparison(TestCase):
         parent_page.add_child(instance=self.page)
 
     def test_get_comparison(self):
-        # Test whether the InlinePanel passes it's label in get_comparison
+        # Test whether the MultipleChooserPanel passes its heading in get_comparison
 
         comparison = (
             self.page.get_edit_handler()

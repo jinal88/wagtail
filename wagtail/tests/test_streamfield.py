@@ -237,6 +237,24 @@ class TestStreamValueAccess(TestCase):
         self.assertEqual(fetched_body[1].block_type, "text")
         self.assertEqual(fetched_body[1].value, "bar")
 
+    def test_can_append_on_queried_instance(self):
+        # The test is analog to test_can_append(), but instead of working with the
+        # in-memory version from JSONStreamModel.objects.create(), we query a fresh
+        # instance from the db.
+        # It tests adding data to child blocks that
+        # have not yet been lazy loaded. This would previously crash.
+        self.json_body = JSONStreamModel.objects.get(pk=self.json_body.pk)
+        self.json_body.body.append(("text", "bar"))
+        self.json_body.save()
+
+        fetched_body = JSONStreamModel.objects.get(id=self.json_body.id).body
+        self.assertIsInstance(fetched_body, StreamValue)
+        self.assertEqual(len(fetched_body), 2)
+        self.assertEqual(fetched_body[0].block_type, "text")
+        self.assertEqual(fetched_body[0].value, "foo")
+        self.assertEqual(fetched_body[1].block_type, "text")
+        self.assertEqual(fetched_body[1].value, "bar")
+
     def test_complex_assignment(self):
         page = StreamPage(title="Test page", body=[])
         page.body = [
@@ -278,6 +296,18 @@ class TestComplexDefault(TestCase):
         self.assertEqual(self.page.body[1].value[0].value, "The Great Gatsby")
         self.assertEqual(self.page.body[1].value[1].block_type, "author")
         self.assertEqual(self.page.body[1].value[1].value, "F. Scott Fitzgerald")
+
+    def test_creation_form_with_initial_instance(self):
+        form_class = ComplexDefaultStreamPage.get_edit_handler().get_form_class()
+        form = form_class(instance=self.page)
+        form_html = form.as_p()
+        self.assertIn("The Great Gatsby", form_html)
+
+    def test_creation_form_without_initial_instance(self):
+        form_class = ComplexDefaultStreamPage.get_edit_handler().get_form_class()
+        form = form_class()
+        form_html = form.as_p()
+        self.assertIn("The Great Gatsby", form_html)
 
 
 class TestStreamFieldRenderingBase(TestCase):
@@ -721,3 +751,268 @@ class TestGetBlockByContentPath(TestCase):
         self.assertEqual(bound_block.value, "Barnaby Rudge")
         bound_block = field.get_block_by_content_path(self.page.body, ["456", "999"])
         self.assertIsNone(bound_block)
+
+
+class TestConstructStreamFieldFromLookup(TestCase):
+    def test_construct_block_list_from_lookup(self):
+        field = StreamField(
+            [
+                ("heading", 0),
+                ("paragraph", 1),
+                ("button", 3),
+            ],
+            block_lookup={
+                0: ("wagtail.blocks.CharBlock", [], {"required": True}),
+                1: ("wagtail.blocks.RichTextBlock", [], {}),
+                2: ("wagtail.blocks.PageChooserBlock", [], {}),
+                3: (
+                    "wagtail.blocks.StructBlock",
+                    [
+                        [
+                            ("page", 2),
+                            ("link_text", 0),
+                        ]
+                    ],
+                    {},
+                ),
+            },
+        )
+        stream_block = field.stream_block
+        self.assertIsInstance(stream_block, blocks.StreamBlock)
+        self.assertEqual(len(stream_block.child_blocks), 3)
+
+        heading_block = stream_block.child_blocks["heading"]
+        self.assertIsInstance(heading_block, blocks.CharBlock)
+        self.assertTrue(heading_block.required)
+        self.assertEqual(heading_block.name, "heading")
+
+        paragraph_block = stream_block.child_blocks["paragraph"]
+        self.assertIsInstance(paragraph_block, blocks.RichTextBlock)
+        self.assertEqual(paragraph_block.name, "paragraph")
+
+        button_block = stream_block.child_blocks["button"]
+        self.assertIsInstance(button_block, blocks.StructBlock)
+        self.assertEqual(button_block.name, "button")
+        self.assertEqual(len(button_block.child_blocks), 2)
+        page_block = button_block.child_blocks["page"]
+        self.assertIsInstance(page_block, blocks.PageChooserBlock)
+        link_text_block = button_block.child_blocks["link_text"]
+        self.assertIsInstance(link_text_block, blocks.CharBlock)
+        self.assertEqual(link_text_block.name, "link_text")
+
+    def test_construct_top_level_block_from_lookup(self):
+        field = StreamField(
+            4,
+            block_lookup={
+                0: ("wagtail.blocks.CharBlock", [], {"required": True}),
+                1: ("wagtail.blocks.RichTextBlock", [], {}),
+                2: ("wagtail.blocks.PageChooserBlock", [], {}),
+                3: (
+                    "wagtail.blocks.StructBlock",
+                    [
+                        [
+                            ("page", 2),
+                            ("link_text", 0),
+                        ]
+                    ],
+                    {},
+                ),
+                4: (
+                    "wagtail.blocks.StreamBlock",
+                    [
+                        [
+                            ("heading", 0),
+                            ("paragraph", 1),
+                            ("button", 3),
+                        ]
+                    ],
+                    {},
+                ),
+            },
+        )
+        stream_block = field.stream_block
+        self.assertIsInstance(stream_block, blocks.StreamBlock)
+        self.assertEqual(len(stream_block.child_blocks), 3)
+
+        heading_block = stream_block.child_blocks["heading"]
+        self.assertIsInstance(heading_block, blocks.CharBlock)
+        self.assertTrue(heading_block.required)
+        self.assertEqual(heading_block.name, "heading")
+
+        paragraph_block = stream_block.child_blocks["paragraph"]
+        self.assertIsInstance(paragraph_block, blocks.RichTextBlock)
+        self.assertEqual(paragraph_block.name, "paragraph")
+
+        button_block = stream_block.child_blocks["button"]
+        self.assertIsInstance(button_block, blocks.StructBlock)
+        self.assertEqual(button_block.name, "button")
+        self.assertEqual(len(button_block.child_blocks), 2)
+        page_block = button_block.child_blocks["page"]
+        self.assertIsInstance(page_block, blocks.PageChooserBlock)
+        link_text_block = button_block.child_blocks["link_text"]
+        self.assertIsInstance(link_text_block, blocks.CharBlock)
+        self.assertEqual(link_text_block.name, "link_text")
+
+
+# Used by TestDeconstructStreamFieldWithLookup.test_deconstruct_with_listblock_subclass -
+# needs to be a module-level definition so that the path returned from deconstruct is valid
+class BulletListBlock(blocks.ListBlock):
+    def __init__(self, **kwargs):
+        super().__init__(blocks.CharBlock(required=True), **kwargs)
+
+
+class TestDeconstructStreamFieldWithLookup(TestCase):
+    def test_deconstruct(self):
+        class ButtonBlock(blocks.StructBlock):
+            page = blocks.PageChooserBlock()
+            link_text = blocks.CharBlock(required=True)
+
+        field = StreamField(
+            [
+                ("heading", blocks.CharBlock(required=True)),
+                ("paragraph", blocks.RichTextBlock()),
+                ("button", ButtonBlock()),
+            ],
+            blank=True,
+        )
+        field.set_attributes_from_name("body")
+
+        name, path, args, kwargs = field.deconstruct()
+        self.assertEqual(name, "body")
+        self.assertEqual(path, "wagtail.fields.StreamField")
+        self.assertEqual(
+            args,
+            [
+                [
+                    ("heading", 0),
+                    ("paragraph", 1),
+                    ("button", 3),
+                ]
+            ],
+        )
+        self.assertEqual(
+            kwargs,
+            {
+                "blank": True,
+                "block_lookup": {
+                    0: ("wagtail.blocks.CharBlock", (), {"required": True}),
+                    1: ("wagtail.blocks.RichTextBlock", (), {}),
+                    2: ("wagtail.blocks.PageChooserBlock", (), {}),
+                    3: (
+                        "wagtail.blocks.StructBlock",
+                        [
+                            [
+                                ("page", 2),
+                                ("link_text", 0),
+                            ]
+                        ],
+                        {},
+                    ),
+                },
+            },
+        )
+
+    def test_deconstruct_with_listblock(self):
+        field = StreamField(
+            [
+                ("heading", blocks.CharBlock(required=True)),
+                ("bullets", blocks.ListBlock(blocks.CharBlock(required=True))),
+            ],
+            blank=True,
+        )
+        field.set_attributes_from_name("body")
+        name, path, args, kwargs = field.deconstruct()
+        self.assertEqual(name, "body")
+        self.assertEqual(path, "wagtail.fields.StreamField")
+        self.assertEqual(
+            args,
+            [
+                [
+                    ("heading", 0),
+                    ("bullets", 1),
+                ]
+            ],
+        )
+        self.assertEqual(
+            kwargs,
+            {
+                "blank": True,
+                "block_lookup": {
+                    0: ("wagtail.blocks.CharBlock", (), {"required": True}),
+                    1: ("wagtail.blocks.ListBlock", (0,), {}),
+                },
+            },
+        )
+
+    def test_deconstruct_with_listblock_with_child_block_kwarg(self):
+        field = StreamField(
+            [
+                ("heading", blocks.CharBlock(required=True)),
+                (
+                    "bullets",
+                    blocks.ListBlock(child_block=blocks.CharBlock(required=True)),
+                ),
+            ],
+            blank=True,
+        )
+        field.set_attributes_from_name("body")
+        name, path, args, kwargs = field.deconstruct()
+        self.assertEqual(name, "body")
+        self.assertEqual(path, "wagtail.fields.StreamField")
+        self.assertEqual(
+            args,
+            [
+                [
+                    ("heading", 0),
+                    ("bullets", 1),
+                ]
+            ],
+        )
+        self.assertEqual(
+            kwargs,
+            {
+                "blank": True,
+                "block_lookup": {
+                    0: ("wagtail.blocks.CharBlock", (), {"required": True}),
+                    1: ("wagtail.blocks.ListBlock", (), {"child_block": 0}),
+                },
+            },
+        )
+
+    def test_deconstruct_with_listblock_subclass(self):
+        # See https://github.com/wagtail/wagtail/issues/12164 - unlike StructBlock and StreamBlock,
+        # ListBlock's deconstruct method doesn't reduce subclasses to the base ListBlock class.
+        # Therefore, if a ListBlock subclass defines its own __init__ method with an incompatible
+        # signature to the base ListBlock, this custom signature will be preserved in the result of
+        # deconstruct(), and we cannot rely on the first argument being the child block.
+
+        field = StreamField(
+            [
+                ("heading", blocks.CharBlock(required=True)),
+                ("bullets", BulletListBlock()),
+            ],
+            blank=True,
+        )
+        field.set_attributes_from_name("body")
+        name, path, args, kwargs = field.deconstruct()
+        self.assertEqual(name, "body")
+        self.assertEqual(path, "wagtail.fields.StreamField")
+        self.assertEqual(
+            args,
+            [
+                [
+                    ("heading", 0),
+                    ("bullets", 1),
+                ]
+            ],
+        )
+        self.assertEqual(
+            kwargs,
+            {
+                "blank": True,
+                "block_lookup": {
+                    0: ("wagtail.blocks.CharBlock", (), {"required": True}),
+                    1: ("wagtail.tests.test_streamfield.BulletListBlock", (), {}),
+                },
+            },
+        )
