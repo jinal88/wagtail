@@ -119,6 +119,14 @@ class BaseStructBlock(Block):
                 block.set_name(name)
                 self.child_blocks[name] = block
 
+    @classmethod
+    def construct_from_lookup(cls, lookup, child_blocks, **kwargs):
+        if child_blocks:
+            child_blocks = [
+                (name, lookup.get_block(index)) for name, index in child_blocks
+            ]
+        return cls(child_blocks, **kwargs)
+
     def get_default(self):
         """
         Any default value passed in the constructor or self.meta is going to be a dict
@@ -312,6 +320,17 @@ class BaseStructBlock(Block):
         kwargs = self._constructor_kwargs
         return (path, args, kwargs)
 
+    def deconstruct_with_lookup(self, lookup):
+        path = "wagtail.blocks.StructBlock"
+        args = [
+            [
+                (name, lookup.add_block(block))
+                for name, block in self.child_blocks.items()
+            ]
+        ]
+        kwargs = self._constructor_kwargs
+        return (path, args, kwargs)
+
     def check(self, **kwargs):
         errors = super().check(**kwargs)
         for name, child_block in self.child_blocks.items():
@@ -340,6 +359,9 @@ class BaseStructBlock(Block):
             self.get_default(), prefix="__PREFIX__", errors=None
         )
         return mark_safe(render_to_string(self.meta.form_template, context))
+
+    def get_description(self):
+        return super().get_description() or getattr(self.meta, "help_text", "")
 
     def get_form_context(self, value, prefix="", errors=None):
         return {
@@ -382,8 +404,11 @@ class StructBlockAdapter(Adapter):
     def js_args(self, block):
         meta = {
             "label": block.label,
+            "description": block.get_description(),
             "required": block.required,
             "icon": block.meta.icon,
+            "blockDefId": block.definition_prefix,
+            "isPreviewable": block.is_previewable,
             "classname": block.meta.form_classname,
         }
 

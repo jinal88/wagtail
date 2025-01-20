@@ -1,4 +1,5 @@
 from itertools import groupby
+from warnings import warn
 
 from django import forms
 from django.conf import settings
@@ -14,6 +15,7 @@ from django.utils.html import mark_safe
 from django.utils.translation import gettext_lazy as _
 
 from wagtail import hooks
+from wagtail.admin.forms.formsets import BaseFormSetMixin
 from wagtail.admin.widgets import AdminPageChooser
 from wagtail.models import (
     PAGE_PERMISSION_CODENAMES,
@@ -21,6 +23,7 @@ from wagtail.models import (
     GroupPagePermission,
     Page,
 )
+from wagtail.utils.deprecation import RemovedInWagtail70Warning
 
 User = get_user_model()
 
@@ -29,6 +32,11 @@ standard_fields = {"email", "first_name", "last_name", "is_superuser", "groups"}
 # Custom fields
 if hasattr(settings, "WAGTAIL_USER_CUSTOM_FIELDS"):
     custom_fields = set(settings.WAGTAIL_USER_CUSTOM_FIELDS)
+    warn(
+        "The `WAGTAIL_USER_CUSTOM_FIELDS` setting is deprecated. Use a custom "
+        "`UserViewSet` subclass and override `get_form_class()` instead.",
+        RemovedInWagtail70Warning,
+    )
 else:
     custom_fields = set()
 
@@ -312,7 +320,7 @@ class PagePermissionsForm(forms.Form):
     )
 
 
-class BaseGroupPagePermissionFormSet(forms.BaseFormSet):
+class BaseGroupPagePermissionFormSet(BaseFormSetMixin, forms.BaseFormSet):
     # defined here for easy access from templates
     permission_types = PAGE_PERMISSION_TYPES
 
@@ -343,14 +351,6 @@ class BaseGroupPagePermissionFormSet(forms.BaseFormSet):
             )
 
         super().__init__(data, files, initial=initial_data, prefix=prefix)
-        for form in self.forms:
-            form.fields["DELETE"].widget = forms.HiddenInput()
-
-    @property
-    def empty_form(self):
-        empty_form = super().empty_form
-        empty_form.fields["DELETE"].widget = forms.HiddenInput()
-        return empty_form
 
     def clean(self):
         """Checks that no two forms refer to the same page object"""

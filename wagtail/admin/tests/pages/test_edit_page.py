@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from wagtail.admin.action_menu import ActionMenuItem
 from wagtail.admin.admin_url_finder import AdminURLFinder
 from wagtail.exceptions import PageClassNotFoundError
 from wagtail.models import (
@@ -127,12 +128,14 @@ class TestPageEdit(WagtailTestUtils, TestCase):
             allow_extra_attrs=True,
         )
         # Should show the dialog template pointing to the [data-edit-form] selector as the root
-        self.assertTagInHTML(
-            '<template data-controller="w-teleport" data-w-teleport-target-value="[data-edit-form]">',
-            html,
-            count=1,
-            allow_extra_attrs=True,
+        soup = self.get_soup(html)
+        dialog = soup.select_one(
+            """
+            template[data-controller="w-teleport"][data-w-teleport-target-value="[data-edit-form]"]
+            #schedule-publishing-dialog
+            """
         )
+        self.assertIsNotNone(dialog)
         # Should render the main form with data-edit-form attribute
         self.assertTagInHTML(
             f'<form action="{edit_url}" method="POST" data-edit-form>',
@@ -164,7 +167,7 @@ class TestPageEdit(WagtailTestUtils, TestCase):
             response,
             '<label class="w-field__label" for="id_speakers-__prefix__-last_name" id="id_speakers-__prefix__-last_name-label">',
         )
-        self.assertContains(response, "Add speakers")
+        self.assertContains(response, "Add speaker")
         self.assertContains(response, "Put the keynote speaker first")
 
         # Test MultiFieldPanel help text
@@ -216,8 +219,78 @@ class TestPageEdit(WagtailTestUtils, TestCase):
         expected_url = "/admin/pages/%d/edit/" % self.event_page.id
         self.assertEqual(url_finder.get_edit_url(self.event_page), expected_url)
 
+    def test_construct_page_action_menu_hook_with_custom_default_button(self):
+        class CustomDefaultItem(ActionMenuItem):
+            label = "Custom button"
+            name = "custom-default"
+            classname = "custom-class"
+            icon_name = "check"
+
+            class Media:
+                js = ["js/custom-default.js"]
+                css = {"all": ["css/custom-default.css"]}
+
+        def add_custom_default_item(menu_items, request, context):
+            menu_items.insert(0, CustomDefaultItem())
+
+        with self.register_hook(
+            "construct_page_action_menu",
+            add_custom_default_item,
+        ):
+            response = self.client.get(
+                reverse("wagtailadmin_pages:edit", args=(self.event_page.id,))
+            )
+
+        self.assertEqual(response.status_code, 200)
+
+        soup = self.get_soup(response.content)
+        form = soup.select_one("form[data-edit-form]")
+        custom_action = form.select_one("button[name='custom-default']")
+        self.assertIsNotNone(custom_action)
+
+        # We're replacing the save button, so it should not be in a dropdown
+        # as it's the main action
+        dropdown_parent = custom_action.find_parent(attrs={"class": "w-dropdown"})
+        self.assertIsNone(dropdown_parent)
+
+        self.assertEqual(custom_action.text.strip(), "Custom button")
+        self.assertEqual(custom_action.attrs.get("class"), ["button", "custom-class"])
+        icon = custom_action.select_one("svg use[href='#icon-check']")
+        self.assertIsNotNone(icon)
+
+        # Should contain media files
+        js = soup.select_one("script[src='/static/js/custom-default.js']")
+        self.assertIsNotNone(js)
+        css = soup.select_one("link[href='/static/css/custom-default.css']")
+        self.assertIsNotNone(css)
+
+        # The save button should now be in the dropdown
+        save_item = form.select_one(".w-dropdown .action-save")
+        self.assertIsNotNone(save_item)
+
+    def test_construct_page_action_menu_hook_removes_all_buttons(self):
+        def remove_all_buttons(menu_items, request, context):
+            menu_items[:] = []
+
+        with self.register_hook(
+            "construct_page_action_menu",
+            remove_all_buttons,
+        ):
+            response = self.client.get(
+                reverse("wagtailadmin_pages:edit", args=(self.event_page.id,))
+            )
+
+        # It shouldn't crash due to assuming a default button is present
+        self.assertEqual(response.status_code, 200)
+
+        soup = self.get_soup(response.content)
+        form = soup.select_one("form[data-edit-form]")
+        actions = form.select("footer button")
+        self.assertEqual(len(actions), 0)
+
     def test_usage_count_information_shown(self):
-        PageChooserModel.objects.create(page=self.event_page)
+        with self.captureOnCommitCallbacks(execute=True):
+            PageChooserModel.objects.create(page=self.event_page)
 
         # Tests that the edit page loads
         response = self.client.get(
@@ -2067,7 +2140,7 @@ class TestPageEdit(WagtailTestUtils, TestCase):
         # as when running it within the full test suite
         self.client.get(reverse("wagtailadmin_pages:edit", args=(self.event_page.id,)))
 
-        with self.assertNumQueries(33):
+        with self.assertNumQueries(35):
             self.client.get(
                 reverse("wagtailadmin_pages:edit", args=(self.event_page.id,))
             )
@@ -2080,7 +2153,7 @@ class TestPageEdit(WagtailTestUtils, TestCase):
         # Warm up the cache as above.
         self.client.get(reverse("wagtailadmin_pages:edit", args=(self.event_page.id,)))
 
-        with self.assertNumQueries(37):
+        with self.assertNumQueries(39):
             self.client.get(
                 reverse("wagtailadmin_pages:edit", args=(self.event_page.id,))
             )

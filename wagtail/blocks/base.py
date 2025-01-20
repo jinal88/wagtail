@@ -20,6 +20,7 @@ from wagtail.admin.staticfiles import versioned_static
 from wagtail.coreutils import accepts_kwarg
 from wagtail.telepath import JSContext
 from wagtail.utils.deprecation import RemovedInWagtail70Warning
+from wagtail.utils.templates import template_is_overridden
 
 __all__ = [
     "BaseBlock",
@@ -55,8 +56,10 @@ class BaseBlock(type):
 class Block(metaclass=BaseBlock):
     name = ""
     creation_counter = 0
+    definition_registry = {}
 
     TEMPLATE_VAR = "value"
+    DEFAULT_PREVIEW_TEMPLATE = "wagtailcore/shared/block_preview.html"
 
     class Meta:
         label = None
@@ -94,8 +97,20 @@ class Block(metaclass=BaseBlock):
         self.creation_counter = Block.creation_counter
         Block.creation_counter += 1
         self.definition_prefix = "blockdef-%d" % self.creation_counter
+        Block.definition_registry[self.definition_prefix] = self
 
         self.label = self.meta.label or ""
+
+    @classmethod
+    def construct_from_lookup(cls, lookup, *args, **kwargs):
+        """
+        See `wagtail.blocks.definition_lookup.BlockDefinitionLookup`.
+        Construct a block instance from the provided arguments, using the given BlockDefinitionLookup
+        object to perform any necessary lookups.
+        """
+        # In the base implementation, no lookups take place - args / kwargs are passed
+        # on to the constructor as-is
+        return cls(*args, **kwargs)
 
     def set_name(self, name):
         self.name = name
@@ -146,7 +161,7 @@ class Block(metaclass=BaseBlock):
         model definition time (e.g. something like StructValue which incorporates a
         pointer back to the block definition object).
         """
-        return self.normalize(self.meta.default)
+        return self.normalize(getattr(self.meta, "default", None))
 
     def clean(self, value):
         """
@@ -257,6 +272,60 @@ class Block(metaclass=BaseBlock):
             new_context = self.get_context(value, parent_context=dict(context))
 
         return mark_safe(render_to_string(template, new_context))
+
+    def get_preview_context(self, value, parent_context=None):
+        # We do not fall back to `get_context` here, because the preview context
+        # will be used for a complete view, not just the block. Instead, the
+        # default preview context uses `{% include_block %}`, which will use
+        # `get_context`.
+        return parent_context or {}
+
+    def get_preview_template(self, value, context=None):
+        # We do not fall back to `get_template` here, because the template will
+        # be used for a complete view, not just the block. In most cases, the
+        # block's template cannot stand alone for the preview, as it would be
+        # missing the necessary static assets.
+        #
+        # Instead, the default preview template uses `{% include_block %}`,
+        # which will use `get_template` if a template is defined.
+        return (
+            getattr(self.meta, "preview_template", None)
+            or self.DEFAULT_PREVIEW_TEMPLATE
+        )
+
+    def get_preview_value(self):
+        if hasattr(self.meta, "preview_value"):
+            return self.normalize(self.meta.preview_value)
+        return self.get_default()
+
+    @cached_property
+    def is_previewable(self):
+        # To prevent showing a broken preview if the block preview has not been
+        # configured, consider the block to be previewable if either:
+        # - a specific preview template is configured for the block
+        # - a preview value is provided and the global template has been overridden
+        # which are the intended ways to configure block previews.
+        #
+        # If a block is made previewable by other means, the `is_previewable`
+        # property should be overridden to return `True`.
+        has_specific_template = (
+            hasattr(self.meta, "preview_template")
+            or self.__class__.get_preview_template is not Block.get_preview_template
+        )
+        has_preview_value = (
+            hasattr(self.meta, "preview_value")
+            or getattr(self.meta, "default", None) is not None
+            or self.__class__.get_preview_context is not Block.get_preview_context
+            or self.__class__.get_preview_value is not Block.get_preview_value
+        )
+        has_global_template = template_is_overridden(
+            self.DEFAULT_PREVIEW_TEMPLATE,
+            "templates",
+        )
+        return has_specific_template or (has_preview_value and has_global_template)
+
+    def get_description(self):
+        return getattr(self.meta, "description", "")
 
     def get_api_representation(self, value, context=None):
         """
@@ -376,7 +445,11 @@ class Block(metaclass=BaseBlock):
         """
         return False
 
-    def deconstruct(self):
+    @cached_property
+    def canonical_module_path(self):
+        """
+        Return the module path string that should be used to refer to this block in migrations.
+        """
         # adapted from django.utils.deconstruct.deconstructible
         module_name = self.__module__
         name = self.__class__.__name__
@@ -394,15 +467,28 @@ class Block(metaclass=BaseBlock):
         # if the module defines a DECONSTRUCT_ALIASES dictionary, see if the class has an entry in there;
         # if so, use that instead of the real path
         try:
-            path = module.DECONSTRUCT_ALIASES[self.__class__]
+            return module.DECONSTRUCT_ALIASES[self.__class__]
         except (AttributeError, KeyError):
-            path = f"{module_name}.{name}"
+            return f"{module_name}.{name}"
 
+    def deconstruct(self):
         return (
-            path,
+            self.canonical_module_path,
             self._constructor_args[0],
             self._constructor_args[1],
         )
+
+    def deconstruct_with_lookup(self, lookup):
+        """
+        Like `deconstruct`, but with a `wagtail.blocks.definition_lookup.BlockDefinitionLookupBuilder`
+        object available so that any block instances within the definition can be added to the lookup
+        table to obtain an ID (potentially shared with other matching block definitions, thus reducing
+        the overall definition size) to be used in place of the block. The resulting deconstructed form
+        returned here can then be restored into a block object using `Block.construct_from_lookup`.
+        """
+        # In the base implementation, no substitutions happen, so we ignore the lookup and just call
+        # deconstruct
+        return self.deconstruct()
 
     def __eq__(self, other):
         """
@@ -411,14 +497,9 @@ class Block(metaclass=BaseBlock):
         attributes identified in MUTABLE_META_ATTRIBUTES, so checking these along with the result of
         deconstruct (which captures the constructor arguments) is sufficient to identify (valid) differences.
 
-        This was originally necessary as a workaround for https://code.djangoproject.com/ticket/24340
-        in Django <1.9; the deep_deconstruct function used to detect changes for migrations did not
-        recurse into the block lists, and left them as Block instances. This __eq__ method therefore
-        came into play when identifying changes within migrations.
-
-        As of Django >=1.9, this *probably* isn't required any more. However, it may be useful in
-        future as a way of identifying blocks that can be re-used within StreamField definitions
-        (https://github.com/wagtail/wagtail/issues/4298#issuecomment-367656028).
+        This was implemented as a workaround for a Django <1.9 bug and is quite possibly not used by Wagtail
+        any more, but has been retained as it provides a sensible definition of equality (and there's no
+        reason to break it).
         """
 
         if not isinstance(other, Block):
@@ -544,10 +625,14 @@ class BlockWidget(forms.Widget):
         super().__init__(attrs=attrs)
         self.block_def = block_def
         self._js_context = None
+        self._block_json = None
 
     def _build_block_json(self):
-        self._js_context = JSContext()
-        self._block_json = json.dumps(self._js_context.pack(self.block_def))
+        try:
+            self._js_context = JSContext()
+            self._block_json = json.dumps(self._js_context.pack(self.block_def))
+        except Exception as e:  # noqa: BLE001
+            raise ValueError("Error while serializing block definition: %s" % e) from e
 
     @property
     def js_context(self):
@@ -558,7 +643,7 @@ class BlockWidget(forms.Widget):
 
     @property
     def block_json(self):
-        if self._js_context is None:
+        if self._block_json is None:
             self._build_block_json()
 
         return self._block_json

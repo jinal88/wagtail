@@ -18,6 +18,7 @@ Mohamed Mayla <mohamed.mayla.gmail.com>
 Mohammed Abdul gadir <weekmo.aol.com>
 Oumayma el bez
 ROGER MICHAEL ASHLEY ALLEN <rogermaallen.gmail.com>
+Tarek Berkane
 Waseem Kntar
 Younes Oumakhou
 abdulaziz alfuhigi <abajall.gmail.com>
@@ -94,6 +95,7 @@ Monty NG
 Terry Peng
 Vincent Zhao <zhaopu2008.gmail.com>
 Yin Guanhao <sopium.mysterious.site>
+Yu Cheng
 hanfeng <appweb.cn.gmail.com>
 listeng
 yi huang <yi.codeplayer.gmail.com>
@@ -158,7 +160,7 @@ Matt Westcott <matthew.torchbox.com>
 
 Dutch - nl
 -----
-Arne Turpyn <info.arneturpyn.com>
+508284b2a01981502bb2ffa4487c4782_15a12bb <68ad71d10bcbf1844ad453a9a62b629b_337284>
 Benjamin Van Renterghem <benjaaa.vr.gmail.com>
 Bram <bram2w.live.nl>
 Brecht Dervaux <info.dervauxbrecht.be>
@@ -166,6 +168,7 @@ Coen van der Kamp <cvanderkamp.gmail.com>
 Franklin Kingma <franklin.statix.net>
 Harmen <sigmo.sigmo.nl>
 Huib Keemink <huib.creativedutchmen.com>
+Joeri Vlekken
 Kees Hink <keeshink.gmail.com>
 Loic Teixeira
 Maarten Kling <kling.maarten.gmail.com>
@@ -173,6 +176,7 @@ Matt Westcott <matthew.torchbox.com>
 Meteor0id
 Michael van Tellingen <michaelvantellingen.gmail.com>
 Ramon de Jezus <rdejezus.leukeleu.nl>
+Richard Voorhorst
 Rob Moorman <rob.moori.nl>
 Samuel Leeuwenburg
 Storm Heg <storm.stormbase.digital>
@@ -215,9 +219,11 @@ André Bouatchidzé <a.anbz.net>
 Antonin ENFRUN <anton.zorgameuh.org>
 Aurel Pere
 Aurélien Debord <contact.aureliendebord.com>
+Axel H.
 Axel Haustant
 Benoît Vogel <contact.spicy-informatique.com>
 Bertrand Bordage <bordage.bertrand.gmail.com>
+Christophe CHAUVET <christophe.chauvet.gmail.com>
 Dominique PERETTI <dperetti.gmail.com>
 Fabien Le Frapper <contact.fabienlefrapper.me>
 Loic Teixeira
@@ -373,6 +379,7 @@ Stefano Marchetto <airbatum.gmail.com>
 andrea tagliazucchi <andreatagliazucchi.gmail.com>
 gcm
 giammi <gian-maria.daffre.giammi.org>
+tognee
 
 Japanese - ja
 -----
@@ -448,6 +455,7 @@ Stein Strindhaug <stein.strindhaug.gmail.com>
 Persian - fa
 -----
 Amir Mahmoodi
+Bardia
 Ehsan jahanbakhsh <man207ej.gmail.com>
 Hamed NAJAND <hmd.nzhd.gmail.com>
 Loic Teixeira
@@ -480,6 +488,7 @@ Piotr Moskal <piotrmoskal2011.gmail.com>
 Portuguese (Brazil) - pt_BR
 -----
 A M
+Arthur Sturzbecher
 Bruno Bertoldi <bruno.bertoldi.gmail.com>
 Claudemiro Alves Feitosa Neto <dimiro1.gmail.com>
 Daniel Carvalho <dnc331.gmail.com>
@@ -499,7 +508,7 @@ LB (Ben Johnston) <mail.lb.ee>
 Loic Teixeira
 Luiz Boaretto <lboaretto.gmail.com>
 Marcio Mazza <marciomazza.gmail.com>
-Rodrigo de Almeida Sottomaior Macedo <sottomaiormacedotec.gmail.com>
+Rodrigo Sottomaior Macedo <sottomaiormacedotec.sottomaiormacedo.tech>
 Thiago Cangussu <cangussu.thg.gmail.com>
 Thiago Cangussu <cng.thg.gmail.com>
 Vitor Hugo da Silva Lima <silvalimavitorhugo.gmail.com>
@@ -577,6 +586,7 @@ Nikola Kadić <kadicnikola3.gmail.com>
 
 Slovak (Slovakia) - sk_SK
 -----
+Ivan Waginger <ivan.waginger.gmail.com>
 Jozef Gáborík <hi.jozo.io>
 Loic Teixeira
 Martin Janšto <mato.jansto.sk>
@@ -715,6 +725,11 @@ Zoriana Zaiats
 d55ee35323c0c760f088259cd23b1b6d_9e8a7d1 <5459f3ae99ecdd5ed0be0220acd46004_1019581>
 Николай Инкогнито <mmmsvit.gmail.com>
 
+Uyghur - ug
+-----
+Abduqadir Abliz <sahranbay.gmail.com>
+Azat
+
 Vietnamese - vi
 -----
 Amelia Dao
@@ -723,6 +738,7 @@ Hồng Quân Nguyễn <ng.hong.quan.gmail.com>
 Loic Teixeira
 Luan Nguyen <lihavim.gmail.com>
 Vu Pham
+stdpi
 
 Welsh - cy
 -----
@@ -730,4 +746,5 @@ Adam Hughes <adamhughes31.gmail.com>
 Loic Teixeira
 Matt Westcott <matthew.torchbox.com>
 Philip Crisp
+Philip Lindsay-Crisp
 

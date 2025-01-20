@@ -5,6 +5,8 @@
 # Translators:
 # Amir Mahmoodi, 2022
 # Amir Mahmoodi, 2022-2023
+# Bardia, 2024
+# Bardia, 2024
 # Ehsan jahanbakhsh <man207ej@gmail.com>, 2020
 # Hamed NAJAND <hmd.nzhd@gmail.com>, 2020
 # Mehdi <myjahromi@gmail.com>, 2020
@@ -16,9 +18,9 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-18 17:28+0100\n"
+"POT-Creation-Date: 2024-10-21 17:53+0100\n"
 "PO-Revision-Date: 2014-02-21 15:50+0000\n"
-"Last-Translator: Amir Mahmoodi, 2022-2023\n"
+"Last-Translator: Bardia, 2024\n"
 "Language-Team: Persian (http://app.transifex.com/torchbox/wagtail/language/"
 "fa/)\n"
 "MIME-Version: 1.0\n"
@@ -41,6 +43,12 @@ msgstr "دوباره ثبت کردن در %(task_name)s"
 msgid "Submit to %(workflow_name)s"
 msgstr "ثبت کردن در %(workflow_name)s"
 
+msgid "Restart workflow "
+msgstr "بازنشانی رویه کاری"
+
+msgid "Cancel workflow "
+msgstr "لغو رویه کاری"
+
 msgid "Unpublish"
 msgstr "لغو انتشار"
 
@@ -49,6 +57,10 @@ msgstr "ذخیره پیش نویس"
 
 msgid "Page locked"
 msgstr "صفحه قفل شد"
+
+#, python-format
+msgid "%(label)s and Publish"
+msgstr "%(label)s و انتشار"
 
 msgid "Wagtail admin"
 msgstr "ادمین وگتیل"
@@ -76,6 +88,12 @@ msgstr "همه"
 
 msgid "Collection"
 msgstr "مجموعه"
+
+msgid "Tag"
+msgstr "برچسب"
+
+msgid "Filter by up to ten most popular tags."
+msgstr "فیلتر با ده محبوبترین برچسب ها"
 
 msgid "Preferred language"
 msgstr "زبان ترجیحی"
@@ -207,6 +225,9 @@ msgstr[1] ""
 "%(count)s تا از صفحات در حال کپی شدن منتشر شده‌اند. آیا مایل کپی‌های آنها نیز "
 "انتشار یابند؟"
 
+msgid "Alias"
+msgstr "نام مستعار"
+
 msgid "Keep the new pages updated with future changes"
 msgstr "بروز نگه داشتن صفحات جدید با تغییرات آینده"
 
@@ -235,6 +256,16 @@ msgstr "انتخاب یک والد جدید برای این صفحه."
 msgid "Parent page"
 msgstr "صفحه والد"
 
+msgid "The new page will be a child of this given parent page."
+msgstr "صفحه جدید زیر شاخه صفحه مادر خواهد شد."
+
+#, python-format
+msgid "You do not have permission to create a page under \"%(page_title)s\"."
+msgstr "شما اجازه ساخت صفحه در زیر شاخه صفحه%(page_title)s را ندارید."
+
+msgid "Search…"
+msgstr "جستجو..."
+
 #, python-format
 msgid "Tag(s) %(value_too_long)s are over %(max_tag_length)d characters"
 msgstr "برچسب(های) %(value_too_long)s بیشتر از %(max_tag_length)d حرف دارند"
@@ -250,6 +281,18 @@ msgstr "لطفا دست کم یک گروه را انتخاب نمایید."
 
 msgid "All types"
 msgstr "همه انواع"
+
+msgid "You cannot assign this workflow to the same page multiple times."
+msgstr "شما نمیتوانید یک دستورالعمل را به یک صفحه چند بار اعمال کنید"
+
+msgid "Give your workflow a name"
+msgstr "به رویه کاریتان نام بدهید"
+
+msgid "Add tasks to your workflow"
+msgstr "به رویه کاریتان دستورالعمل اضافه کنید"
+
+msgid "Task"
+msgstr "دستورالعمل"
 
 msgid "1 page selected"
 msgstr "1 صفحه انتخاب شده"
@@ -335,6 +378,9 @@ msgstr "همه %(objects)s آیتم این صفحه انتخاب شدند"
 msgid "All items in listing selected"
 msgstr "همه آیتم های فهرست انتخاب شدند"
 
+msgid "Can access Wagtail admin"
+msgstr "دسترسی برای رفتن به صفحه ادمین وگتیل"
+
 msgid "For search engines"
 msgstr "برای موتور های جست و جو"
 
@@ -368,14 +414,8 @@ msgstr "صفحه‌ی مورد نظر یافت نشد."
 msgid "Go to Wagtail admin"
 msgstr "رفتن به صفحه ادمین وگتیل"
 
-msgid "Account"
-msgstr "حساب کاربری"
-
 msgid "More actions"
 msgstr "اعمال بیشتر"
-
-msgid "Save account details"
-msgstr "ذخیره جزئیات حساب"
 
 msgid "Reset password"
 msgstr "بازنشانی رمزعبور"
@@ -423,6 +463,9 @@ msgstr "رمزعبور را بازنشانی کنید"
 msgid "Reset to default"
 msgstr "بازنشانی به پیشفرض"
 
+msgid "Default avatar"
+msgstr "تصویر پیشفرض"
+
 msgid "Upload a profile picture:"
 msgstr "بارگذاری یک تصویر پروفایل:"
 
@@ -434,6 +477,9 @@ msgstr "بازگشت به عقب"
 
 msgid "Bulk actions"
 msgstr "اعمال جمعی"
+
+msgid "Select"
+msgstr "انتخاب"
 
 msgid "Select row"
 msgstr "انتخاب ردیف"
@@ -541,9 +587,6 @@ msgstr "کاوش زیرصفحه های «%(title)s»"
 msgid "Explore"
 msgstr "کاوش"
 
-msgid "Collection privacy"
-msgstr "حریم مجموعه"
-
 msgid "This collection has been made private by a parent collection."
 msgstr "این مجموعه توسط یک مجموعه والد خصوصی شده است."
 
@@ -591,6 +634,9 @@ msgstr ""
 msgid "Sorry, there are no matches for \"<em>%(search_query)s</em>\""
 msgstr "متاسفانه هیچ انطباقی برای \"<em>%(search_query)s</em>\" وجود ندارد"
 
+msgid "There are no results."
+msgstr "نتیجه ای یافت نشد."
+
 msgid "Yes, delete"
 msgstr "بله حذف شود"
 
@@ -601,17 +647,32 @@ msgstr "نه، حذف نکن"
 msgid "Unpublish %(title)s"
 msgstr "لغو انتشار %(title)s"
 
+#, python-format
+msgid "Are you sure you want to unpublish this %(model_name)s?"
+msgstr "آیا مطمئن هستید میخواهید %(model_name)s را از انتشار خارج کنید؟"
+
 msgid "Yes, unpublish it"
 msgstr "بله لغو انتشار شود"
 
 msgid "No, don't unpublish"
 msgstr "نه لغو انتشار نشود"
 
+#, python-format
+msgid "Publish %(model_name)s"
+msgstr "انتشار%(model_name)s"
+
+#, python-format
+msgid "Would you still like to publish this %(model_name)s?"
+msgstr "آیا هنوز مایل به انتشار %(model_name)s هستید؟"
+
 msgid "Cancel"
 msgstr "لغو"
 
 msgid "Actions"
 msgstr "اعمال"
+
+msgid "Comment"
+msgstr "نظر"
 
 msgid "Update"
 msgstr "بروزرسانی"
@@ -654,10 +715,6 @@ msgstr[1] "%(counter)s پله حرکت به بالا"
 msgid "There are no differences between these two versions"
 msgstr "تفاوتی بین این دو نسخه وجود ندارد"
 
-#, python-format
-msgid "Welcome to the %(site_name)s Wagtail CMS"
-msgstr "به وگتیل %(site_name)s خوش آمدید"
-
 msgid ""
 "This is your dashboard on which helpful information about content you've "
 "created will be displayed."
@@ -665,8 +722,14 @@ msgstr ""
 "اینجا پیشخوان شماست و در آن اطلاعات مفیدی مربوط به محتوایی که تولید کرده اید "
 "نمایش داده میشود."
 
+msgid "Account"
+msgstr "حساب کاربری"
+
 msgid "Your locked pages"
 msgstr "صفحات قفل شده"
+
+msgid "Status"
+msgstr "وضعیت"
 
 msgid "Locked at"
 msgstr "قفل شده در"
@@ -686,26 +749,20 @@ msgstr "منتشر شده"
 msgid "Your most recent edits"
 msgstr "ویرایش‌های اخیر شما"
 
-msgid "Status"
-msgstr "وضعیت"
-
 msgid "Date"
 msgstr "تاریخ"
 
 msgid "Site summary"
 msgstr "خلاصه سایت"
 
-#, python-format
-msgid ""
-"Wagtail upgrade available. Your version: <strong>%(current_version)s</"
-"strong>. New version: <strong data-w-upgrade-target=\"latestVersion\"></"
-"strong>."
-msgstr ""
-"بروز رسانی وگتیل در دسترس است. نسخه شما: <strong>%(current_version)s</"
-"strong>. نسخه جدید: <strong data-w-upgrade-target=\"latestVersion\"></strong>"
-
 msgid "Read the release notes."
 msgstr "خواندن یادداشت های انتشار."
+
+msgid "Task started"
+msgstr "دستورالعمل آغاز شده"
+
+msgid "Changes requested at"
+msgstr "تغییرات درخواست شده در"
 
 msgid "Awaiting"
 msgstr "در انتظار"
@@ -731,6 +788,12 @@ msgstr ""
 
 msgid "Awaiting your review"
 msgstr "در انتظار بازنگری شما"
+
+msgid "Tasks"
+msgstr "دستورالعمل ها"
+
+msgid "Task submitted by"
+msgstr "دستورالعمل ثبت شده توسط"
 
 msgid "Preview"
 msgstr "نمایش"
@@ -827,21 +890,6 @@ msgstr "پاسخ های جدید:"
 msgid "%(editor)s has updated comments on \"%(title)s\""
 msgstr "%(editor)s نظرات \"%(title)s\" را بروز کرده است"
 
-msgid "Page privacy"
-msgstr "حریم صفحه"
-
-msgid "This page has been made private by a parent page."
-msgstr "این صفحه توسط صفحه والد شخصی شده."
-
-msgid "You have <span>unsaved edits</span>"
-msgstr "شما دارای <span>تغییرات ذخیره نشده</span> هستید  "
-
-msgid "You have <span>unsaved comments</span>"
-msgstr "شما دارای <span>نظرات ذخیره نشده</span> هستید  "
-
-msgid "You have <span>unsaved edits</span> and <span>comments</span>"
-msgstr "شما دارای <span>تغییرات</span> و <span>نظرات</span> ذخیره نشده هستید  "
-
 msgid "Publishing…"
 msgstr "درحال انتشار"
 
@@ -867,6 +915,9 @@ msgstr "ایجاد صفحه در"
 msgid "Choose which type of page you'd like to create."
 msgstr "نوع صفحه ای را که میخواهید بسازید مشخص کنید."
 
+msgid "Sorry, you cannot create a page at this location."
+msgstr "متاسفانه ایجاد صفحه در اینجا میسر نیست."
+
 #, python-format
 msgid "Pages using %(page_type)s"
 msgstr "صفحه هایی که %(page_type)s هستند"
@@ -878,6 +929,9 @@ msgstr[1] "شما مجور حذف این صفحات را ندارید"
 
 msgid "Move"
 msgstr "انتقال"
+
+msgid "Are you sure you want to move these pages?"
+msgstr "آیا از انتقال این صفحات اطمینان دارید؟"
 
 msgid "You don't have permission to move this page"
 msgid_plural "You don't have permission to move these pages"
@@ -897,6 +951,9 @@ msgid "You don't have permission to publish this page"
 msgid_plural "You don't have permission to publish these pages"
 msgstr[0] "شما مجوز منتشر کردن این صفحه را ندارید"
 msgstr[1] "شما مجوز منتشر کردن این صفحات را ندارید"
+
+msgid "Yes, publish"
+msgstr "بله، انتشار بده"
 
 msgid "No, don't publish"
 msgstr "نه، منتشر نکن"
@@ -972,11 +1029,14 @@ msgstr "کپی"
 msgid "Copy this page"
 msgstr "کپی این صفحه"
 
-msgid "This page has unsaved changes."
-msgstr "این صفحه تغییرات ذخیره نشده دارد."
+msgid "Edit original page"
+msgstr "ویرایش صفحه اصلی"
 
 msgid "Configure a site now."
 msgstr "پیکربندی یک سایت"
+
+msgid "Select all pages in listing"
+msgstr "انتخاب تمامی صفحات در لیست"
 
 msgid "This page is locked to further editing"
 msgstr "این صفحه برای ویرایش در آینده قفل شده"
@@ -1027,9 +1087,6 @@ msgstr "انواع صفحه"
 
 msgid "Enter a search term above"
 msgstr "عبارت جستجو را وارد نمایید"
-
-msgid "No pages use"
-msgstr "صفحه ای استفاده نمی‌کند"
 
 #, python-format
 msgid "Add %(label)s"
@@ -1089,6 +1146,9 @@ msgstr "صفحه %(page_num)s از %(total_pages)s."
 
 msgid "Breadcrumb"
 msgstr "خرده نان"
+
+msgid "Continue"
+msgstr "ادامه"
 
 msgid "Download XLSX"
 msgstr "دانلود XLSX"
@@ -1158,8 +1218,14 @@ msgstr ""
 msgid "Preview mode"
 msgstr "حالت پیش نمایش"
 
-msgid "Edit / Review"
-msgstr "ویرایش / بازنگری"
+msgid "You have <span>unsaved edits</span>"
+msgstr "شما دارای <span>تغییرات ذخیره نشده</span> هستید  "
+
+msgid "You have <span>unsaved comments</span>"
+msgstr "شما دارای <span>نظرات ذخیره نشده</span> هستید  "
+
+msgid "You have <span>unsaved edits</span> and <span>comments</span>"
+msgstr "شما دارای <span>تغییرات</span> و <span>نظرات</span> ذخیره نشده هستید  "
 
 #, python-format
 msgid "Requested by <b>%(modified_by)s</b>"
@@ -1196,12 +1262,6 @@ msgstr "افزودن صفحه فرزند"
 msgid "Show in Explorer"
 msgstr "نمایش در کاوشگر"
 
-msgid "Creating…"
-msgstr "در حال ساخت..."
-
-msgid "Create"
-msgstr "ساختن"
-
 msgid "Not used"
 msgstr "استفاده نشده"
 
@@ -1213,6 +1273,12 @@ msgstr "وظایفی که میخواهید ایجاد کنید را انتخاب
 
 msgid "New"
 msgstr "جدید"
+
+msgid "Creating…"
+msgstr "در حال ساخت..."
+
+msgid "Create"
+msgstr "ساختن"
 
 msgid ""
 "Why not <a class=\"create-one-now\" href=\"#tab-new\" data-tab-"
@@ -1299,12 +1365,12 @@ msgstr "مجموعه '%(object)s' بروزرسانی شد."
 msgid "The collection could not be saved due to errors."
 msgstr "به دلیل بروز خطا امکان ذخیره مجموعه وجود ندارد."
 
-msgid "Delete collection"
-msgstr "حذف مجموعه"
-
 #, python-format
 msgid "Collection '%(object)s' deleted."
 msgstr "مجموعه  '%(object)s' حذف شد."
+
+msgid "Delete collection"
+msgstr "حذف مجموعه"
 
 msgid "Are you sure you want to delete this collection?"
 msgstr "آیا میخواهید این مجموعه را حذف کنید؟"
@@ -1326,6 +1392,9 @@ msgstr "مقایسه با نسخه‌ی فعلی"
 
 msgid "Cancel scheduled publish"
 msgstr "لغو انتشار زمانبندی شده"
+
+msgid "Edit / Review"
+msgstr "ویرایش / بازنگری"
 
 #, python-format
 msgid "%(model_name)s '%(title)s' is now unlocked."
@@ -1401,9 +1470,6 @@ msgstr "بازرسی"
 
 msgid "Editing"
 msgstr "ویرایش"
-
-msgid "Inspecting"
-msgstr "بازرسی"
 
 msgid "Earliest"
 msgstr "اولین"
@@ -1667,9 +1733,6 @@ msgstr "صفحات سالخورده"
 
 msgid "Last published at"
 msgstr "انتشار قبلی در"
-
-msgid "Hide commenting actions"
-msgstr "مخفی کردت اعمال مربوط به نظر دهی"
 
 msgid "Site history"
 msgstr "تاریخچه سایت"

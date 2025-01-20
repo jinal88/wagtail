@@ -29,6 +29,7 @@ from laces.templatetags.laces import component
 
 from wagtail import hooks
 from wagtail.admin.admin_url_finder import AdminURLFinder
+from wagtail.admin.icons import get_icon_sprite_url
 from wagtail.admin.localization import get_js_translation_strings
 from wagtail.admin.menu import admin_menu
 from wagtail.admin.search import admin_search_areas
@@ -584,7 +585,14 @@ def bulk_action_choices(context, app_label, model_name):
 
 
 @register.inclusion_tag("wagtailadmin/shared/avatar.html")
-def avatar(user=None, classname=None, size=None, tooltip=None):
+def avatar(
+    user=None,
+    classname=None,
+    size=None,
+    tooltip=None,
+    tooltip_html=None,
+    edit_link=False,
+):
     """
     Displays a user avatar using the avatar template
     Usage:
@@ -594,9 +602,18 @@ def avatar(user=None, classname=None, size=None, tooltip=None):
     :param user: the user to get avatar information from (User)
     :param size: default None (None|'small'|'large'|'square')
     :param tooltip: Optional tooltip to display under the avatar (string)
+    :param tooltip_html: Optional tooltip as an HTML element for rich content (string)
+    :param edit_link: Optional edit link to display underneath the avatar (boolean)
     :return: Rendered template snippet
     """
-    return {"user": user, "classname": classname, "size": size, "tooltip": tooltip}
+    return {
+        "user": user,
+        "classname": classname,
+        "size": size,
+        "tooltip": tooltip,
+        "tooltip_html": tooltip_html,
+        "edit_link": edit_link,
+    }
 
 
 @register.simple_tag
@@ -637,8 +654,19 @@ def avatar_url(user, size=50, gravatar_only=False):
     """
     A template tag that receives a user and size and return
     the appropriate avatar url for that user.
+
+    If the 'get_avatar_url' hook is defined, then that will intercept this
+    logic and point to whatever resource that function returns. In this way,
+    users can swap out the Wagtail UserProfile avatar for some other image or
+    field of their own choosing without needing to alter anything on the
+    existing models.
+
     Example usage: {% avatar_url request.user 50 %}
+
     """
+    for hook_fn in hooks.get_hooks("get_avatar_url"):
+        if url := hook_fn(user, size):
+            return url
 
     if (
         not gravatar_only
@@ -666,16 +694,26 @@ def admin_theme_classname(context):
         if hasattr(user, "wagtail_userprofile")
         else "system"
     )
+    contrast_name = (
+        user.wagtail_userprofile.contrast
+        if hasattr(user, "wagtail_userprofile")
+        else "system"
+    )
     density_name = (
         user.wagtail_userprofile.density
         if hasattr(user, "wagtail_userprofile")
         else "default"
     )
-    return f"w-theme-{theme_name} w-density-{density_name}"
+    contrast_name = contrast_name.split("_")[0]
+    return f"w-theme-{theme_name} w-density-{density_name} w-contrast-{contrast_name}"
 
 
 @register.simple_tag
 def js_translation_strings():
+    warn(
+        "The `js_translation_strings` template tag will be removed in a future release.",
+        category=RemovedInWagtail70Warning,
+    )
     return mark_safe(json.dumps(get_js_translation_strings()))
 
 
@@ -851,16 +889,23 @@ def i18n_enabled():
 
 
 @register.simple_tag
-def locales():
-    return json.dumps(
-        [
-            {
-                "code": locale.language_code,
-                "display_name": force_str(locale.get_display_name()),
-            }
-            for locale in Locale.objects.all()
-        ]
-    )
+def locales(serialize=True):
+    result = [
+        {
+            "code": locale.language_code,
+            "display_name": force_str(locale.get_display_name()),
+        }
+        for locale in Locale.objects.all()
+    ]
+
+    if serialize:
+        warn(
+            "The `locales` template tag will be removed in a future release.",
+            category=RemovedInWagtail70Warning,
+        )
+        return json.dumps(result)
+
+    return result
 
 
 @register.simple_tag
@@ -928,21 +973,25 @@ def wagtail_config(context):
         "CSRF_HEADER_NAME": HttpHeaders.parse_header_name(
             getattr(settings, "CSRF_HEADER_NAME")
         ),
+        "ADMIN_API": {
+            "PAGES": reverse("wagtailadmin_api:pages:listing"),
+            "DOCUMENTS": reverse("wagtailadmin_api:documents:listing"),
+            "IMAGES": reverse("wagtailadmin_api:images:listing"),
+            # Used to add an extra query string on all API requests. Example value: '&order=-id'
+            "EXTRA_CHILDREN_PARAMETERS": "",
+        },
         "ADMIN_URLS": {
             "DISMISSIBLES": reverse("wagtailadmin_dismissibles"),
+            "PAGES": reverse("wagtailadmin_explore_root"),
+            "BLOCK_PREVIEW": reverse("wagtailadmin_block_preview"),
         },
+        "I18N_ENABLED": i18n_enabled(),
+        "LOCALES": locales(serialize=False),
+        "STRINGS": get_js_translation_strings(),
     }
 
-    default_settings = {
-        "WAGTAIL_AUTO_UPDATE_PREVIEW": True,
-        "WAGTAIL_AUTO_UPDATE_PREVIEW_INTERVAL": 500,
-    }
-    config.update(
-        {
-            option: getattr(settings, option, default)
-            for option, default in default_settings.items()
-        }
-    )
+    if locale := context.get("locale"):
+        config["ACTIVE_CONTENT_LOCALE"] = locale.language_code
 
     return config
 
@@ -1377,3 +1426,6 @@ def human_readable_date(date, description=None, placement="top"):
 # Shadow the laces `component` tag which was extracted from Wagtail. The shadowing
 # is useful to avoid having to update all the templates that use the `component` tag.
 register.tag("component", component)
+
+
+register.simple_tag(get_icon_sprite_url, name="icon_sprite_url")

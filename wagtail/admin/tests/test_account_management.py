@@ -1,6 +1,6 @@
 import unittest
 
-import pytz
+import zoneinfo
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth import views as auth_views
@@ -19,6 +19,7 @@ from wagtail.admin.localization import (
 from wagtail.admin.views.account import AccountView, profile_tab
 from wagtail.images.tests.utils import get_test_image_file
 from wagtail.test.utils import WagtailTestUtils
+from wagtail.test.utils.template_tests import AdminTemplateTestUtils
 from wagtail.users.models import UserProfile
 
 
@@ -232,18 +233,22 @@ class TestAccountSectionUtilsMixin:
             "locale-current_time_zone": "Europe/London",
             "theme-theme": "dark",
             "theme-density": "default",
+            "theme-contrast": "system",
         }
         post_data.update(extra_post_data)
         return self.client.post(reverse("wagtailadmin_account"), post_data)
 
 
-class TestAccountSection(WagtailTestUtils, TestCase, TestAccountSectionUtilsMixin):
+class TestAccountSection(
+    AdminTemplateTestUtils, TestAccountSectionUtilsMixin, WagtailTestUtils, TestCase
+):
     """
     This tests that the accounts section is working
     """
 
     def setUp(self):
         self.user = self.login()
+        get_available_admin_time_zones.cache_clear()
 
     def test_account_view(self):
         """
@@ -274,8 +279,19 @@ class TestAccountSection(WagtailTestUtils, TestCase, TestAccountSectionUtilsMixi
         # Form media should be included on the page
         self.assertContains(response, "vendor/colorpicker.js")
 
+        # Form should use the multipart/form-data encoding type
+        self.assertContains(response, 'enctype="multipart/form-data"')
+
         # Check if the default title exists
         self.assertContains(response, "Name and Email")
+
+        soup = self.get_soup(response.content)
+        self.assertBreadcrumbsItemsRendered(
+            [{"url": "", "label": "Account"}], response.content
+        )
+        heading = soup.select_one("main h2")
+        self.assertIsNotNone(heading)
+        self.assertEqual(heading.text.strip(), "Account")
 
     def test_change_name_post(self):
         response = self.post_form(
@@ -479,7 +495,7 @@ class TestAccountSection(WagtailTestUtils, TestCase, TestAccountSectionUtilsMixi
         response = self.client.get(reverse("wagtailadmin_home"))
         self.assertContains(
             response,
-            '<html lang="es" dir="ltr" class="w-theme-dark w-density-default">',
+            '<html lang="es" dir="ltr" class="w-theme-dark w-density-default w-contrast-system">',
         )
 
     def test_unset_language_preferences(self):
@@ -515,6 +531,17 @@ class TestAccountSection(WagtailTestUtils, TestCase, TestAccountSectionUtilsMixi
         self.assertListEqual(
             get_available_admin_languages(), WAGTAILADMIN_PROVIDED_LANGUAGES
         )
+
+    @override_settings(LANGUAGE_CODE="id")
+    def test_default_language_follows_server_setting(self):
+        response = self.client.get(reverse("wagtailadmin_account"))
+        self.assertEqual(response.status_code, 200)
+        soup = self.get_soup(response.content)
+        option = soup.select_one(
+            'select[name="locale-preferred_language"] option[value=""]'
+        )
+        self.assertIsNotNone(option)
+        self.assertEqual(option.text.strip(), "Use server language: Bahasa Indonesia")
 
     @override_settings(WAGTAILADMIN_PERMITTED_LANGUAGES=[("en", "English")])
     def test_not_show_options_if_only_one_language_is_permitted(self):
@@ -567,7 +594,26 @@ class TestAccountSection(WagtailTestUtils, TestCase, TestAccountSectionUtilsMixi
 
     @unittest.skipUnless(settings.USE_TZ, "Timezone support is disabled")
     def test_available_admin_time_zones_by_default(self):
-        self.assertListEqual(get_available_admin_time_zones(), pytz.common_timezones)
+        self.assertListEqual(
+            get_available_admin_time_zones(),
+            sorted(zoneinfo.available_timezones()),
+        )
+
+        response = self.client.get(reverse("wagtailadmin_account"))
+        self.assertEqual(response.status_code, 200)
+        soup = self.get_soup(response.content)
+
+        select = soup.select_one('select[name="locale-current_time_zone"]')
+        self.assertIsNotNone(select)
+        self.assertEqual(select.get("data-controller"), "w-init w-locale")
+        self.assertEqual(
+            select.get("data-action"),
+            "w-init:ready->w-locale#localizeTimeZoneOptions",
+        )
+        self.assertEqual(
+            select.get("data-w-locale-server-time-zone-param"),
+            settings.TIME_ZONE,
+        )
 
     @unittest.skipUnless(settings.USE_TZ, "Timezone support is disabled")
     @override_settings(WAGTAIL_USER_TIME_ZONES=["Europe/London"])
@@ -605,6 +651,21 @@ class TestAccountSection(WagtailTestUtils, TestCase, TestAccountSectionUtilsMixi
         profile.refresh_from_db()
 
         self.assertEqual(profile.theme, "light")
+
+    def test_change_contrast_post(self):
+        response = self.post_form(
+            {
+                "theme-contrast": "more_contrast",
+            }
+        )
+
+        # Check that the user was redirected to the account page
+        self.assertRedirects(response, reverse("wagtailadmin_account"))
+
+        profile = UserProfile.get_for_user(self.user)
+        profile.refresh_from_db()
+
+        self.assertEqual(profile.contrast, "more_contrast")
 
     def test_change_density_post(self):
         response = self.post_form(

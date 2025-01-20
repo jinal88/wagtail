@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.utils.http import urlencode
 
 from wagtail import hooks
+from wagtail.admin.staticfiles import versioned_static
 from wagtail.admin.widgets import Button
 from wagtail.models import GroupPagePermission, Locale, Page, Site, Workflow
 from wagtail.test.testapp.models import (
@@ -91,6 +92,13 @@ class TestPageExplorer(WagtailTestUtils, TestCase):
             response,
             reverse("wagtailadmin_pages:history", args=(self.root_page.id,)),
             count=3,
+        )
+
+        bulk_actions_js = versioned_static("wagtailadmin/js/bulk-actions.js")
+        self.assertContains(
+            response,
+            f'<script defer src="{bulk_actions_js}"></script>',
+            html=True,
         )
 
     def test_explore_results(self):
@@ -396,7 +404,11 @@ class TestPageExplorer(WagtailTestUtils, TestCase):
         )
 
         # Check response
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtailadmin/pages/index.html")
+
+        # Check that we got page one
+        self.assertEqual(response.context["page_obj"].number, 1)
 
     def test_pagination_out_of_range(self):
         self.make_pages()
@@ -406,7 +418,14 @@ class TestPageExplorer(WagtailTestUtils, TestCase):
         )
 
         # Check response
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtailadmin/pages/index.html")
+
+        # Check that we got the last page
+        self.assertEqual(
+            response.context["page_obj"].number,
+            response.context["paginator"].num_pages,
+        )
 
     def test_no_pagination_with_custom_ordering(self):
         self.make_pages()
@@ -633,6 +652,24 @@ class TestPageExplorer(WagtailTestUtils, TestCase):
         }
         self.assertIn("Simple page", page_type_labels)
         self.assertNotIn("Page", page_type_labels)
+
+    @override_settings(WAGTAIL_I18N_ENABLED=True)
+    def test_filter_by_locale_and_search(self):
+        fr_locale = Locale.objects.create(language_code="fr")
+        self.root_page.copy_for_translation(fr_locale, copy_parents=True)
+
+        response = self.client.get(
+            reverse("wagtailadmin_explore", args=(self.root_page.id,)),
+            {"locale": "en", "q": "hello"},
+        )
+        self.assertEqual(response.status_code, 200)
+        page_ids = {page.id for page in response.context["pages"]}
+        self.assertIn(self.child_page.id, page_ids)
+        self.assertContainsActiveFilter(
+            response,
+            "Locale: English",
+            "locale=en",
+        )
 
     def test_filter_by_date_updated(self):
         new_page_child = SimplePage(
@@ -921,6 +958,25 @@ class TestPageExplorerSignposting(WagtailTestUtils, TestCase):
             response, """<a href="/admin/sites/">Configure a site now.</a>"""
         )
 
+    def test_searching_at_root(self):
+        self.login(username="superuser", password="password")
+
+        # Message about root level should not show when searching or filtering
+        response = self.client.get(reverse("wagtailadmin_explore_root"), {"q": "hello"})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(
+            response,
+            "The root level is where you can add new sites to your Wagtail installation.",
+        )
+        response = self.client.get(
+            reverse("wagtailadmin_explore_root"), {"has_child_pages": "true"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(
+            response,
+            "The root level is where you can add new sites to your Wagtail installation.",
+        )
+
     def test_admin_at_non_site_page(self):
         self.login(username="superuser", password="password")
         response = self.client.get(
@@ -938,6 +994,29 @@ class TestPageExplorerSignposting(WagtailTestUtils, TestCase):
         )
         self.assertContains(
             response, """<a href="/admin/sites/">Configure a site now.</a>"""
+        )
+
+    def test_searching_at_non_site_page(self):
+        self.login(username="superuser", password="password")
+
+        # Message about unroutable pages should not show when searching or filtering
+        response = self.client.get(
+            reverse("wagtailadmin_explore", args=(self.no_site_page.id,)),
+            {"q": "hello"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(
+            response,
+            "There is no site set up for this location.",
+        )
+        response = self.client.get(
+            reverse("wagtailadmin_explore", args=(self.no_site_page.id,)),
+            {"has_child_pages": "true"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(
+            response,
+            "There is no site set up for this location.",
         )
 
     def test_admin_at_site_page(self):
@@ -1184,7 +1263,7 @@ class TestExplorablePageVisibility(WagtailTestUtils, TestCase):
         response = self.client.get(reverse("wagtailadmin_home"))
         self.assertEqual(response.status_code, 200)
         # Bob should only see the welcome for example.com, not testserver
-        self.assertContains(response, "Welcome to the example.com Wagtail CMS")
+        self.assertContains(response, "example.com")
         self.assertNotContains(response, "testserver")
 
     def test_breadcrumb_with_no_user_permissions(self):
@@ -1273,7 +1352,7 @@ class TestInWorkflowStatus(WagtailTestUtils, TestCase):
         # Warm up cache
         self.client.get(self.url)
 
-        with self.assertNumQueries(47):
+        with self.assertNumQueries(44):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)

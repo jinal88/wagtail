@@ -28,7 +28,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-18 17:28+0100\n"
+"POT-Creation-Date: 2024-10-21 17:53+0100\n"
 "PO-Revision-Date: 2014-02-21 15:51+0000\n"
 "Last-Translator: Andrei Satsevich, 2023-2024\n"
 "Language-Team: Russian (http://app.transifex.com/torchbox/wagtail/language/"
@@ -232,6 +232,15 @@ msgstr "опубликовано + черновик"
 
 msgid "Default"
 msgstr "По умолчанию"
+
+msgid "Preview in mobile size"
+msgstr "Предварительный просмотр в формате смартфона"
+
+msgid "Preview in tablet size"
+msgstr "Предварительный просмотр в формате планшета"
+
+msgid "Preview in desktop size"
+msgstr "Предварительный просмотр в формате компьютера"
 
 msgid "locked"
 msgstr "заблокировано"
@@ -460,7 +469,7 @@ msgid "Members of the chosen Wagtail Groups can approve this task"
 msgstr "Члены выбранных Wagtail групп могут одобрить эту задачу"
 
 msgid "Group approval task"
-msgstr "Группа одобрения задачи"
+msgstr "Задача группового утверждения"
 
 msgid "Group approval tasks"
 msgstr "Группа одобрения задач"
@@ -581,6 +590,9 @@ msgstr "запись модели лога"
 
 msgid "model log entries"
 msgstr "записи модели лога"
+
+msgid "locale"
+msgstr "локализация"
 
 msgid "collection"
 msgstr "коллекция"

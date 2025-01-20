@@ -19,7 +19,7 @@ If you want to send an encrypted email (optional), the public key ID for <securi
 
 This information can also be found in our [security.txt](https://wagtail.org/.well-known/security.txt).
 
-Django security issues should be reported directly to the Django Project, following [Django's security policies](https://docs.djangoproject.com/en/dev/internals/security/) (upon which Wagtail's own policies are based).
+Django security issues should be reported directly to the Django Project, following [Django's security policies](inv:django#internals/security) (upon which Wagtail's own policies are based).
 
 ## Supported versions
 
@@ -53,7 +53,7 @@ On the day of disclosure, we will take the following steps:
    The commit messages for these patches will indicate that they are for security issues, but will not describe the issue in any detail; instead, they will warn of upcoming disclosure.
 2. Issue the relevant release(s), by placing new packages on [the Python Package Index](https://pypi.org/project/wagtail/), tagging the new release(s) in Wagtail's GitHub repository and updating Wagtail's [release notes](../releases/index).
 3. Publish a [security advisory](https://github.com/wagtail/wagtail/security/advisories?state=published) on Wagtail's GitHub repository. This describes the issue and its resolution in detail, pointing to the relevant patches and new releases, and crediting the reporter of the issue (if the reporter wishes to be publicly identified)
-4. Post a notice to the [Wagtail discussion board](https://github.com/wagtail/wagtail/discussions), [Slack workspace](https://wagtail.org/slack/) and Twitter feed ([\@WagtailCMS](https://twitter.com/wagtailcms)) that links to the security advisory.
+4. Post a notice to the [Wagtail discussion board](https://github.com/wagtail/wagtail/discussions), [Slack workspace](https://wagtail.org/slack/) and X feed ([\@WagtailCMS](https://x.com/wagtailcms)) that links to the security advisory.
 
 If a reported issue is believed to be particularly time-sensitive -- due to a known exploit in the wild, for example -- the time between advance notification and public disclosure may be shortened considerably.
 

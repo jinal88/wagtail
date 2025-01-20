@@ -113,7 +113,6 @@ class CreateView(PermissionPanelFormsMixin, generic.CreateView):
 class EditView(PermissionPanelFormsMixin, generic.EditView):
     success_message = _("Group '%(object)s' updated.")
     error_message = _("The group could not be saved due to errors.")
-    delete_item_label = _("Delete group")
     context_object_name = "group"
 
     @cached_property
@@ -149,11 +148,19 @@ class GroupViewSet(ModelViewSet):
     model = Group
     ordering = ["name"]
     add_to_reference_index = False
+    menu_name = "groups"
+    menu_label = _("Groups")
+    menu_order = 601
+    add_to_settings_menu = True
 
     index_view_class = IndexView
     add_view_class = CreateView
     edit_view_class = EditView
     delete_view_class = DeleteView
+
+    # Copying requires prepopulating the formsets with copies of the existing
+    # permissions, which is not currently supported.
+    copy_view_enabled = False
 
     template_prefix = "wagtailusers/groups/"
 

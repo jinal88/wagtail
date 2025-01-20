@@ -11,6 +11,7 @@ from wagtail.coreutils import get_dummy_request
 from wagtail.models import PAGE_TEMPLATE_VAR, Page, Site
 from wagtail.test.testapp.models import BusinessChild, BusinessIndex, SimplePage
 from wagtail.test.utils import WagtailTestUtils
+from wagtail.utils.deprecation import RemovedInWagtail70Warning
 
 
 class TestUserbarTag(WagtailTestUtils, TestCase):
@@ -184,7 +185,7 @@ class TestAccessibilityCheckerConfig(WagtailTestUtils, TestCase):
         return json.loads(self.get_script().string)
 
     def get_hook(self, item_class):
-        def customise_accessibility_checker(request, items):
+        def customise_accessibility_checker(request, items, page):
             items[:] = [
                 item_class() if isinstance(item, AccessibilityItem) else item
                 for item in items
@@ -208,22 +209,32 @@ class TestAccessibilityCheckerConfig(WagtailTestUtils, TestCase):
         config = self.get_config()
         self.assertIsInstance(config.get("messages"), dict)
         self.assertEqual(
-            config["messages"]["empty-heading"],
-            "Empty heading found. Use meaningful text for screen reader users.",
+            config["messages"]["empty-heading"]["error_name"],
+            "Empty heading found",
+        )
+        self.assertEqual(
+            config["messages"]["empty-heading"]["help_text"],
+            "Use meaningful text for screen reader users",
         )
 
     def test_custom_message(self):
         class CustomMessageAccessibilityItem(AccessibilityItem):
             # Override via class attribute
             axe_messages = {
-                "empty-heading": "Headings should not be empty!",
+                "empty-heading": {
+                    "error_name": "Headings should not be empty!",
+                    "help_text": "Use meaningful text!",
+                },
             }
 
             # Override via method
             def get_axe_messages(self, request):
                 return {
                     **super().get_axe_messages(request),
-                    "color-contrast-enhanced": "Increase colour contrast!",
+                    "color-contrast-enhanced": {
+                        "error_name": "Insufficient colour contrast!",
+                        "help_text": "Ensure contrast ratio of at least 4.5:1",
+                    },
                 }
 
         with hooks.register_temporarily(
@@ -234,8 +245,14 @@ class TestAccessibilityCheckerConfig(WagtailTestUtils, TestCase):
             self.assertEqual(
                 config["messages"],
                 {
-                    "empty-heading": "Headings should not be empty!",
-                    "color-contrast-enhanced": "Increase colour contrast!",
+                    "empty-heading": {
+                        "error_name": "Headings should not be empty!",
+                        "help_text": "Use meaningful text!",
+                    },
+                    "color-contrast-enhanced": {
+                        "error_name": "Insufficient colour contrast!",
+                        "help_text": "Ensure contrast ratio of at least 4.5:1",
+                    },
                 },
             )
 
@@ -341,6 +358,77 @@ class TestAccessibilityCheckerConfig(WagtailTestUtils, TestCase):
                 },
             )
 
+    def test_custom_rules_and_checks(self):
+        class CustomRulesAndChecksAccessibilityItem(AccessibilityItem):
+            # Override via class attribute
+            axe_custom_checks = [
+                {
+                    "id": "check-image-alt-text",
+                    "options": {"pattern": "\\.[a-z]{1,4}$|_"},
+                },
+            ]
+
+            # Add via method
+            def get_axe_custom_rules(self, request):
+                return super().get_axe_custom_rules(request) + [
+                    {
+                        "id": "link-text-quality",
+                        "impact": "serious",
+                        "selector": "a",
+                        "tags": ["best-practice"],
+                        "any": ["check-link-text"],
+                        "enabled": True,
+                    }
+                ]
+
+            def get_axe_custom_checks(self, request):
+                return super().get_axe_custom_checks(request) + [
+                    {
+                        "id": "check-link-text",
+                        "options": {"pattern": "learn more$"},
+                    }
+                ]
+
+        with hooks.register_temporarily(
+            "construct_wagtail_userbar",
+            self.get_hook(CustomRulesAndChecksAccessibilityItem),
+        ):
+            self.maxDiff = None
+            config = self.get_config()
+            self.assertEqual(
+                config["spec"],
+                {
+                    "rules": [
+                        {
+                            "id": "alt-text-quality",
+                            "impact": "serious",
+                            "selector": "img[alt]",
+                            "tags": ["best-practice"],
+                            "any": ["check-image-alt-text"],
+                            "enabled": True,
+                        },
+                        {
+                            "id": "link-text-quality",
+                            "impact": "serious",
+                            "selector": "a",
+                            "tags": ["best-practice"],
+                            "any": ["check-link-text"],
+                            "enabled": True,
+                        },
+                    ],
+                    "checks": [
+                        {
+                            "id": "check-image-alt-text",
+                            "options": {"pattern": "\\.[a-z]{1,4}$|_"},
+                        },
+                        {
+                            "id": "check-link-text",
+                            "options": {"pattern": "learn more$"},
+                        },
+                    ],
+                },
+            )
+
 
 class TestUserbarInPageServe(WagtailTestUtils, TestCase):
     def setUp(self):
@@ -367,6 +455,86 @@ class TestUserbarInPageServe(WagtailTestUtils, TestCase):
         # Check that the userbar is not rendered
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, '<template id="wagtail-userbar-template">')
+
+    def test_construct_wagtail_userbar_hook_passes_page(self):
+        kwargs = {}
+
+        def construct_wagtail_userbar(request, items, page):
+            kwargs["page"] = page
+            return items
+
+        with hooks.register_temporarily(
+            "construct_wagtail_userbar",
+            construct_wagtail_userbar,
+        ):
+            response = self.page.serve(self.request)
+            response.render()
+
+            self.assertEqual(kwargs.get("page"), self.page)
+
+    def test_deprecated_construct_wagtail_userbar_hook_without_page(self):
+        kwargs = {}
+
+        def construct_wagtail_userbar(request, items):
+            kwargs["called"] = True
+            return items
+
+        with self.assertWarnsMessage(
+            RemovedInWagtail70Warning,
+            "`construct_wagtail_userbar` hook functions should accept a `page` argument in third position",
+        ), hooks.register_temporarily(
+            "construct_wagtail_userbar",
+            construct_wagtail_userbar,
+        ):
+            response = self.page.serve(self.request)
+            response.render()
+
+            self.assertTrue(kwargs.get("called"))
+
+
+class TestUserbarHooksForChecksPanel(WagtailTestUtils, TestCase):
+    def setUp(self):
+        self.user = self.login()
+        self.homepage = Page.objects.get(id=2).specific
+
+    def test_construct_wagtail_userbar_hook_passes_page(self):
+        kwargs = {}
+
+        def construct_wagtail_userbar(request, items, page):
+            kwargs["called"] = True
+            return items
+
+        with hooks.register_temporarily(
+            "construct_wagtail_userbar",
+            construct_wagtail_userbar,
+        ):
+            response = self.client.get(
+                reverse("wagtailadmin_pages:edit", args=(self.homepage.id,))
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(kwargs.get("called"))
+
+    def test_deprecated_construct_wagtail_userbar_hook_without_page(self):
+        kwargs = {}
+
+        def construct_wagtail_userbar(request, items):
+            kwargs["called"] = True
+            return items
+
+        with self.assertWarnsMessage(
+            RemovedInWagtail70Warning,
+            "`construct_wagtail_userbar` hook functions should accept a `page` argument in third position",
+        ), hooks.register_temporarily(
+            "construct_wagtail_userbar",
+            construct_wagtail_userbar,
+        ):
+            response = self.client.get(
+                reverse("wagtailadmin_pages:edit", args=(self.homepage.id,))
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(kwargs.get("called"))
 
 
 class TestUserbarAddLink(WagtailTestUtils, TestCase):

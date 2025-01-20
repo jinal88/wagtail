@@ -50,7 +50,6 @@ class GenericPageBreadcrumbsMixin:
     item of the generic view's generated breadcrumbs items.
     """
 
-    _show_breadcrumbs = True
     breadcrumbs_items_to_take = 1
 
     @cached_property
@@ -66,6 +65,7 @@ class GenericPageBreadcrumbsMixin:
         # which in most cases is the final item that links to the current view.
         # However, this can be customised in the case of generic views that are
         # nested inside another generic view.
-        return self.breadcrumbs_items + [
-            super().get_breadcrumbs_items()[-self.breadcrumbs_items_to_take]
-        ]
+        return (
+            self.breadcrumbs_items
+            + super().get_breadcrumbs_items()[-self.breadcrumbs_items_to_take :]
+        )

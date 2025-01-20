@@ -3,6 +3,7 @@ import collections
 import copy
 import json
 import unittest
+import unittest.mock
 from decimal import Decimal
 
 # non-standard import name for gettext_lazy, to prevent strings from being picked up for translation
@@ -17,6 +18,7 @@ from django.utils.translation import gettext_lazy as _
 
 from wagtail import blocks
 from wagtail.blocks.base import get_error_json_data
+from wagtail.blocks.definition_lookup import BlockDefinitionLookup
 from wagtail.blocks.field_block import FieldBlockAdapter
 from wagtail.blocks.list_block import ListBlockAdapter, ListBlockValidationError
 from wagtail.blocks.static_block import StaticBlockAdapter
@@ -56,6 +58,89 @@ class TestBlock(SimpleTestCase):
         obj = object()
         self.assertIs(blocks.Block().normalize(obj), obj)
 
+    def test_block_definition_registry(self):
+        """Instantiating a Block should register it in the definition registry"""
+        block = blocks.Block()
+        self.assertIs(blocks.Block.definition_registry[block.definition_prefix], block)
+
+    def test_block_is_previewable(self):
+        class CustomContextBlock(blocks.Block):
+            def get_preview_context(self, value, parent_context=None):
+                return {"value": value, "foo": "bar"}
+
+        class CustomTemplateBlock(blocks.Block):
+            def get_preview_template(self, value=None, context=None):
+                return "foo.html"
+
+        class CustomValueBlock(blocks.Block):
+            def get_preview_value(self):
+                return "foo"
+
+        variants = {
+            "no_config": [
+                blocks.Block(),
+            ],
+            "specific_template": [
+                blocks.Block(preview_template="foo.html"),
+                CustomTemplateBlock(),
+            ],
+            "custom_value": [
+                blocks.Block(preview_value="foo"),
+                blocks.Block(default="bar"),
+                CustomContextBlock(),
+                CustomValueBlock(),
+            ],
+            "specific_template_and_custom_value": [
+                blocks.Block(preview_template="foo.html", preview_value="bar"),
+            ],
+        }
+
+        # Test without a global template override
+        cases = [
+            # Unconfigured block should not be previewable
+            ("no_config", False),
+            # Providing a specific preview template should make the block
+            # previewable even without a custom preview value, as the content
+            # may be hardcoded in the template
+            ("specific_template", True),
+            # Providing a preview value without a custom template should not
+            # make the block previewable, as it may be missing the static assets
+            ("custom_value", False),
+            # Providing both a preview template and value also makes the block
+            # previewable, this is the same as providing a custom template only
+            ("specific_template_and_custom_value", True),
+        ]
+        for variant, is_previewable in cases:
+            with self.subTest(variant=variant, custom_global_template=False):
+                for block in variants[variant]:
+                    self.assertIs(block.is_previewable, is_previewable)
+
+        # Test with a global template override
+        with unittest.mock.patch(
+            "wagtail.blocks.base.template_is_overridden",
+            return_value=True,
+        ):
+            cases = [
+                # Global template override + no preview value = not previewable,
+                # since it's unlikely the global template alone will provide a
+                # useful preview
+                ("no_config", False),
+                # Unchanged – specific template always makes the block previewable
+                ("specific_template", True),
+                # Global template override + custom preview value = previewable.
+                # We assume the global template will provide the static assets,
+                # and the custom value (and the block's real template via
+                # {% include_block %}) will provide the content.
+                ("custom_value", True),
+                # Unchanged – providing both also makes the block previewable
+                ("specific_template_and_custom_value", True),
+            ]
+            for variant, is_previewable in cases:
+                with self.subTest(variant=variant, custom_global_template=True):
+                    for block in variants[variant]:
+                        del block.is_previewable  # Clear cached_property
+                        self.assertIs(block.is_previewable, is_previewable)
+
 
 class TestFieldBlock(WagtailTestUtils, SimpleTestCase):
     def test_charfield_render(self):
@@ -63,6 +148,13 @@ class TestFieldBlock(WagtailTestUtils, SimpleTestCase):
         html = block.render("Hello world!")
 
         self.assertEqual(html, "Hello world!")
+
+    def test_block_definition_registry(self):
+        block = blocks.CharBlock(label="Test block")
+        registered_block = blocks.Block.definition_registry[block.definition_prefix]
+        self.assertIsInstance(registered_block, blocks.CharBlock)
+        self.assertEqual(registered_block.meta.label, "Test block")
+        self.assertIs(registered_block, block)
 
     def test_charfield_render_with_template(self):
         block = blocks.CharBlock(template="tests/blocks/heading_block.html")
@@ -82,9 +174,12 @@ class TestFieldBlock(WagtailTestUtils, SimpleTestCase):
             js_args[2],
             {
                 "label": "Test block",
+                "description": "Some helpful text",
                 "helpText": "Some helpful text",
                 "required": True,
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "w-field w-field--char_field w-field--text_input",
                 "showAddCommentButton": True,
                 "strings": {"ADD_COMMENT": "Add Comment"},
@@ -171,7 +266,7 @@ class TestFieldBlock(WagtailTestUtils, SimpleTestCase):
                 )
             )
 
-        block = ChoiceBlock()
+        block = ChoiceBlock(description="A selection of two choices")
 
         block.set_name("test_choiceblock")
         js_args = FieldBlockAdapter().js_args(block)
@@ -189,8 +284,11 @@ class TestFieldBlock(WagtailTestUtils, SimpleTestCase):
             js_args[2],
             {
                 "label": "Test choiceblock",
+                "description": "A selection of two choices",
                 "required": True,
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "w-field w-field--choice_field w-field--select",
                 "showAddCommentButton": True,
                 "strings": {"ADD_COMMENT": "Add Comment"},
@@ -600,6 +698,9 @@ class TestRichTextBlock(TestCase):
                 "classname": "w-field w-field--char_field w-field--custom_rich_text_area",
                 "icon": "pilcrow",
                 "label": "Test richtextblock",
+                "description": "",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "required": True,
                 "showAddCommentButton": True,
                 "strings": {"ADD_COMMENT": "Add Comment"},
@@ -620,8 +721,11 @@ class TestRichTextBlock(TestCase):
             js_args[2],
             {
                 "label": "Test richtextblock",
+                "description": "",
                 "required": True,
                 "icon": "pilcrow",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "w-field w-field--char_field w-field--draftail_rich_text_area",
                 "showAddCommentButton": False,  # Draftail manages its own comments
                 "strings": {"ADD_COMMENT": "Add Comment"},
@@ -642,8 +746,11 @@ class TestRichTextBlock(TestCase):
             js_args[2],
             {
                 "label": "Test richtextblock",
+                "description": "",
                 "required": True,
                 "icon": "pilcrow",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "w-field w-field--char_field w-field--draftail_rich_text_area",
                 "showAddCommentButton": False,  # Draftail manages its own comments
                 "strings": {"ADD_COMMENT": "Add Comment"},
@@ -757,8 +864,11 @@ class TestChoiceBlock(WagtailTestUtils, SimpleTestCase):
             js_args[2],
             {
                 "label": "Test choiceblock",
+                "description": "",
                 "required": True,
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "w-field w-field--choice_field w-field--select",
                 "showAddCommentButton": True,
                 "strings": {"ADD_COMMENT": "Add Comment"},
@@ -1122,6 +1232,18 @@ class TestChoiceBlock(WagtailTestUtils, SimpleTestCase):
         with self.assertRaises(ValidationError):
             block.clean("coffee")
 
+    def test_get_form_state(self):
+        block = blocks.ChoiceBlock(choices=[("tea", "Tea"), ("coffee", "Coffee")])
+        form_state = block.get_form_state("tea")
+        self.assertEqual(form_state, ["tea"])
+
+    def test_get_form_state_with_radio_widget(self):
+        block = blocks.ChoiceBlock(
+            choices=[("tea", "Tea"), ("coffee", "Coffee")], widget=forms.RadioSelect
+        )
+        form_state = block.get_form_state("tea")
+        self.assertEqual(form_state, ["tea"])
+
 
 class TestMultipleChoiceBlock(WagtailTestUtils, SimpleTestCase):
     def setUp(self):
@@ -1146,8 +1268,11 @@ class TestMultipleChoiceBlock(WagtailTestUtils, SimpleTestCase):
             js_args[2],
             {
                 "label": "Test choiceblock",
+                "description": "",
                 "required": True,
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "w-field w-field--multiple_choice_field w-field--select_multiple",
                 "showAddCommentButton": True,
                 "strings": {"ADD_COMMENT": "Add Comment"},
@@ -1508,6 +1633,21 @@ class TestMultipleChoiceBlock(WagtailTestUtils, SimpleTestCase):
         with self.assertRaises(ValidationError):
             block.clean("coffee")
 
+    def test_get_form_state(self):
+        block = blocks.MultipleChoiceBlock(
+            choices=[("tea", "Tea"), ("coffee", "Coffee")]
+        )
+        form_state = block.get_form_state(["tea", "coffee"])
+        self.assertEqual(form_state, ["tea", "coffee"])
+
+    def test_get_form_state_with_checkbox_widget(self):
+        block = blocks.ChoiceBlock(
+            choices=[("tea", "Tea"), ("coffee", "Coffee")],
+            widget=forms.CheckboxSelectMultiple,
+        )
+        form_state = block.get_form_state(["tea", "coffee"])
+        self.assertEqual(form_state, ["tea", "coffee"])
+
 
 class TestRawHTMLBlock(unittest.TestCase):
     def test_get_default_with_fallback_value(self):
@@ -1567,8 +1707,11 @@ class TestRawHTMLBlock(unittest.TestCase):
             js_args[2],
             {
                 "label": "Test rawhtmlblock",
+                "description": "",
                 "required": True,
                 "icon": "code",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "w-field w-field--char_field w-field--textarea",
                 "showAddCommentButton": True,
                 "strings": {"ADD_COMMENT": "Add Comment"},
@@ -1909,8 +2052,11 @@ class TestStructBlock(SimpleTestCase):
             js_args[2],
             {
                 "label": "Test structblock",
+                "description": "",
                 "required": False,
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "struct-block",
             },
         )
@@ -1938,8 +2084,11 @@ class TestStructBlock(SimpleTestCase):
             js_args[2],
             {
                 "label": "Test structblock",
+                "description": "",
                 "required": False,
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "struct-block",
                 "formTemplate": "<div>Hello</div>",
             },
@@ -1962,8 +2111,11 @@ class TestStructBlock(SimpleTestCase):
             js_args[2],
             {
                 "label": "Test structblock",
+                "description": "",
                 "required": False,
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "struct-block",
                 "formTemplate": "<div>Hello</div>",
             },
@@ -1995,8 +2147,11 @@ class TestStructBlock(SimpleTestCase):
             js_args[2],
             {
                 "label": "Test structblock",
+                "description": "Self-promotion is encouraged",
                 "required": False,
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "struct-block",
                 "helpIcon": (
                     '<svg class="icon icon-help default" aria-hidden="true">'
@@ -2020,8 +2175,11 @@ class TestStructBlock(SimpleTestCase):
             js_args[2],
             {
                 "label": "Test structblock",
+                "description": "Self-promotion is encouraged",
                 "required": False,
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "struct-block",
                 "helpIcon": (
                     '<svg class="icon icon-help default" aria-hidden="true">'
@@ -2649,7 +2807,10 @@ class TestListBlock(WagtailTestUtils, SimpleTestCase):
             js_args[3],
             {
                 "label": "Test listblock",
+                "description": "",
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": None,
                 "collapsed": False,
                 "strings": {
@@ -2657,6 +2818,7 @@ class TestListBlock(WagtailTestUtils, SimpleTestCase):
                     "DUPLICATE": "Duplicate",
                     "MOVE_DOWN": "Move down",
                     "MOVE_UP": "Move up",
+                    "DRAG": "Drag",
                     "ADD": "Add",
                 },
             },
@@ -2679,7 +2841,10 @@ class TestListBlock(WagtailTestUtils, SimpleTestCase):
             js_args[3],
             {
                 "label": "Test listblock",
+                "description": "",
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": None,
                 "collapsed": False,
                 "minNum": 2,
@@ -2689,6 +2854,7 @@ class TestListBlock(WagtailTestUtils, SimpleTestCase):
                     "DUPLICATE": "Duplicate",
                     "MOVE_DOWN": "Move down",
                     "MOVE_UP": "Move up",
+                    "DRAG": "Drag",
                     "ADD": "Add",
                 },
             },
@@ -2853,7 +3019,10 @@ class TestListBlock(WagtailTestUtils, SimpleTestCase):
             js_args[3],
             {
                 "label": "Test listblock",
+                "description": "",
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "special-list-class",
                 "collapsed": False,
                 "strings": {
@@ -2861,6 +3030,7 @@ class TestListBlock(WagtailTestUtils, SimpleTestCase):
                     "DUPLICATE": "Duplicate",
                     "MOVE_DOWN": "Move down",
                     "MOVE_UP": "Move up",
+                    "DRAG": "Drag",
                     "ADD": "Add",
                 },
             },
@@ -2886,7 +3056,10 @@ class TestListBlock(WagtailTestUtils, SimpleTestCase):
             js_args[3],
             {
                 "label": "Test listblock",
+                "description": "",
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "custom-list-class",
                 "collapsed": False,
                 "strings": {
@@ -2894,6 +3067,7 @@ class TestListBlock(WagtailTestUtils, SimpleTestCase):
                     "DUPLICATE": "Duplicate",
                     "MOVE_DOWN": "Move down",
                     "MOVE_UP": "Move up",
+                    "DRAG": "Drag",
                     "ADD": "Add",
                 },
             },
@@ -3523,7 +3697,10 @@ class TestStreamBlock(WagtailTestUtils, SimpleTestCase):
             js_args[3],
             {
                 "label": "Test streamblock",
+                "description": "",
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": None,
                 "collapsed": False,
                 "maxNum": None,
@@ -3535,6 +3712,7 @@ class TestStreamBlock(WagtailTestUtils, SimpleTestCase):
                     "DUPLICATE": "Duplicate",
                     "MOVE_DOWN": "Move down",
                     "MOVE_UP": "Move up",
+                    "DRAG": "Drag",
                     "ADD": "Add",
                 },
             },
@@ -4249,7 +4427,10 @@ class TestStreamBlock(WagtailTestUtils, SimpleTestCase):
             js_args[3],
             {
                 "label": "Test streamblock",
+                "description": "",
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "minNum": None,
                 "maxNum": None,
                 "blockCounts": {},
@@ -4261,6 +4442,7 @@ class TestStreamBlock(WagtailTestUtils, SimpleTestCase):
                     "DUPLICATE": "Duplicate",
                     "MOVE_DOWN": "Move down",
                     "MOVE_UP": "Move up",
+                    "DRAG": "Drag",
                     "ADD": "Add",
                 },
             },
@@ -4351,7 +4533,10 @@ class TestStreamBlock(WagtailTestUtils, SimpleTestCase):
             js_args[3],
             {
                 "label": "Test streamblock",
+                "description": "",
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "minNum": None,
                 "maxNum": None,
                 "blockCounts": {},
@@ -4363,6 +4548,7 @@ class TestStreamBlock(WagtailTestUtils, SimpleTestCase):
                     "DUPLICATE": "Duplicate",
                     "MOVE_DOWN": "Move down",
                     "MOVE_UP": "Move up",
+                    "DRAG": "Drag",
                     "ADD": "Add",
                 },
             },
@@ -4682,7 +4868,9 @@ class TestPageChooserBlock(TestCase):
     def test_adapt(self):
         from wagtail.admin.widgets.chooser import AdminPageChooser
 
-        block = blocks.PageChooserBlock(help_text="pick a page, any page")
+        block = blocks.PageChooserBlock(
+            help_text="pick a page, any page", description="A featured page"
+        )
 
         block.set_name("test_pagechooserblock")
         js_args = FieldBlockAdapter().js_args(block)
@@ -4695,8 +4883,11 @@ class TestPageChooserBlock(TestCase):
             js_args[2],
             {
                 "label": "Test pagechooserblock",
+                "description": "A featured page",
                 "required": True,
                 "icon": "doc-empty-inverse",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "helpText": "pick a page, any page",
                 "classname": "w-field w-field--model_choice_field w-field--admin_page_chooser",
                 "showAddCommentButton": True,
@@ -4861,6 +5052,16 @@ class TestPageChooserBlock(TestCase):
 
         self.assertSequenceEqual(pages, expected_pages)
 
+    def test_bulk_to_python_distinct_instances(self):
+        page_ids = [2, 2]
+        block = blocks.PageChooserBlock()
+
+        with self.assertNumQueries(1):
+            pages = block.bulk_to_python(page_ids)
+
+        # Ensure that the two retrieved pages are distinct instances
+        self.assertIsNot(pages[0], pages[1])
+
     def test_extract_references(self):
         block = blocks.PageChooserBlock()
         christmas_page = Page.objects.get(slug="christmas")
@@ -4890,7 +5091,10 @@ class TestStaticBlock(unittest.TestCase):
             {
                 "text": "Latest posts - This block doesn't need to be configured, it will be displayed automatically",
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "label": "Posts static block",
+                "description": "",
             },
         )
 
@@ -4911,7 +5115,10 @@ class TestStaticBlock(unittest.TestCase):
             {
                 "text": "Latest posts - This block doesn't need to be configured, it will be displayed automatically",
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "label": "Posts static block",
+                "description": "",
             },
         )
 
@@ -4931,7 +5138,10 @@ class TestStaticBlock(unittest.TestCase):
             {
                 "text": "Latest posts: this block has no options.",
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "label": "Latest posts",
+                "description": "",
             },
         )
 
@@ -4952,7 +5162,10 @@ class TestStaticBlock(unittest.TestCase):
             {
                 "text": "Posts static block: this block has no options.",
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "label": "Posts static block",
+                "description": "",
             },
         )
 
@@ -4973,7 +5186,10 @@ class TestStaticBlock(unittest.TestCase):
             {
                 "html": "<b>Latest posts</b> - This block doesn't need to be configured, it will be displayed automatically",
                 "icon": "placeholder",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "label": "Posts static block",
+                "description": "",
             },
         )
 
@@ -4986,6 +5202,11 @@ class TestStaticBlock(unittest.TestCase):
         block = blocks.StaticBlock(template="tests/blocks/posts_static_block.html")
         result = block.render(None)
         self.assertEqual(result, "<p>PostsStaticBlock template</p>")
+
+    def test_render_without_template(self):
+        block = blocks.StaticBlock()
+        result = block.render(None)
+        self.assertEqual(result, "")
 
     def test_serialize(self):
         block = blocks.StaticBlock()
@@ -5020,8 +5241,11 @@ class TestDateBlock(TestCase):
             js_args[2],
             {
                 "label": "Test dateblock",
+                "description": "",
                 "required": True,
                 "icon": "date",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "w-field w-field--date_field w-field--admin_date_input",
                 "showAddCommentButton": True,
                 "strings": {"ADD_COMMENT": "Add Comment"},
@@ -5053,8 +5277,11 @@ class TestTimeBlock(TestCase):
             js_args[2],
             {
                 "label": "Test timeblock",
+                "description": "",
                 "required": True,
                 "icon": "time",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "w-field w-field--time_field w-field--admin_time_input",
                 "showAddCommentButton": True,
                 "strings": {"ADD_COMMENT": "Add Comment"},
@@ -5086,8 +5313,11 @@ class TestDateTimeBlock(TestCase):
             js_args[2],
             {
                 "label": "Test datetimeblock",
+                "description": "",
                 "required": True,
                 "icon": "date",
+                "blockDefId": block.definition_prefix,
+                "isPreviewable": block.is_previewable,
                 "classname": "w-field w-field--date_time_field w-field--admin_date_time_input",
                 "showAddCommentButton": True,
                 "strings": {"ADD_COMMENT": "Add Comment"},
@@ -5855,3 +6085,105 @@ class TestValidationErrorAsJsonData(TestCase):
                 ],
             },
         )
+
+
+class TestBlockDefinitionLookup(TestCase):
+    def test_simple_lookup(self):
+        lookup = BlockDefinitionLookup(
+            {
+                0: ("wagtail.blocks.CharBlock", [], {"required": True}),
+                1: ("wagtail.blocks.RichTextBlock", [], {}),
+            }
+        )
+        char_block = lookup.get_block(0)
+        char_block.set_name("title")
+        self.assertIsInstance(char_block, blocks.CharBlock)
+        self.assertTrue(char_block.required)
+
+        rich_text_block = lookup.get_block(1)
+        self.assertIsInstance(rich_text_block, blocks.RichTextBlock)
+
+        # A subsequent call to get_block with the same index should return a new instance;
+        # this ensures that state changes such as set_name are independent of other blocks
+        char_block_2 = lookup.get_block(0)
+        char_block_2.set_name("subtitle")
+        self.assertIsInstance(char_block, blocks.CharBlock)
+        self.assertTrue(char_block.required)
+        self.assertIsNot(char_block, char_block_2)
+        self.assertEqual(char_block.name, "title")
+        self.assertEqual(char_block_2.name, "subtitle")
+
+    def test_structblock_lookup(self):
+        lookup = BlockDefinitionLookup(
+            {
+                0: ("wagtail.blocks.CharBlock", [], {"required": True}),
+                1: ("wagtail.blocks.RichTextBlock", [], {}),
+                2: (
+                    "wagtail.blocks.StructBlock",
+                    [
+                        [
+                            ("title", 0),
+                            ("description", 1),
+                        ],
+                    ],
+                    {},
+                ),
+            }
+        )
+        struct_block = lookup.get_block(2)
+        self.assertIsInstance(struct_block, blocks.StructBlock)
+        title_block = struct_block.child_blocks["title"]
+        self.assertIsInstance(title_block, blocks.CharBlock)
+        self.assertTrue(title_block.required)
+        description_block = struct_block.child_blocks["description"]
+        self.assertIsInstance(description_block, blocks.RichTextBlock)
+
+    def test_streamblock_lookup(self):
+        lookup = BlockDefinitionLookup(
+            {
+                0: ("wagtail.blocks.CharBlock", [], {"required": True}),
+                1: ("wagtail.blocks.RichTextBlock", [], {}),
+                2: (
+                    "wagtail.blocks.StreamBlock",
+                    [
+                        [
+                            ("heading", 0),
+                            ("paragraph", 1),
+                        ],
+                    ],
+                    {},
+                ),
+            }
+        )
+        stream_block = lookup.get_block(2)
+        self.assertIsInstance(stream_block, blocks.StreamBlock)
+        title_block = stream_block.child_blocks["heading"]
+        self.assertIsInstance(title_block, blocks.CharBlock)
+        self.assertTrue(title_block.required)
+        description_block = stream_block.child_blocks["paragraph"]
+        self.assertIsInstance(description_block, blocks.RichTextBlock)
+
+    def test_listblock_lookup(self):
+        lookup = BlockDefinitionLookup(
+            {
+                0: ("wagtail.blocks.CharBlock", [], {"required": True}),
+                1: ("wagtail.blocks.ListBlock", [0], {}),
+            }
+        )
+        list_block = lookup.get_block(1)
+        self.assertIsInstance(list_block, blocks.ListBlock)
+        list_item_block = list_block.child_block
+        self.assertIsInstance(list_item_block, blocks.CharBlock)
+        self.assertTrue(list_item_block.required)
+
+        # Passing a class as the child block is still valid; this is not converted
+        # to a reference
+        lookup = BlockDefinitionLookup(
+            {
+                0: ("wagtail.blocks.ListBlock", [blocks.CharBlock], {}),
+            }
+        )
+        list_block = lookup.get_block(0)
+        self.assertIsInstance(list_block, blocks.ListBlock)
+        list_item_block = list_block.child_block
+        self.assertIsInstance(list_item_block, blocks.CharBlock)

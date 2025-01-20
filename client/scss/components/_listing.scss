@@ -27,6 +27,7 @@ ul.listing {
 
   td,
   th {
+    text-align: start;
     padding: calc(1em * var(--w-density-factor)) 0.3em;
 
     @include media-breakpoint-up(sm) {
@@ -49,6 +50,7 @@ ul.listing {
 
   td {
     vertical-align: middle;
+    overflow-wrap: anywhere;
   }
 
   td.title {
@@ -62,7 +64,6 @@ ul.listing {
 
     th {
       font-size: 0.9em;
-      text-align: start;
       font-weight: normal;
       white-space: nowrap;
     }
@@ -87,8 +88,8 @@ ul.listing {
   }
 
   &:has(
-      td:first-child input[type='checkbox'],
-      th:first-child input[type='checkbox']
+      td:first-child input[type='checkbox']:only-child,
+      th:first-child input[type='checkbox']:only-child
     ) {
     td:first-child,
     th:first-child {
@@ -97,6 +98,7 @@ ul.listing {
       width: theme('spacing.10');
       text-align: center;
 
+      // stylelint-disable-next-line selector-max-specificity
       input[type='checkbox'] {
         margin-inline-end: 0;
       }
@@ -223,19 +225,13 @@ ul.listing {
 
   .title {
     word-break: break-word;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: theme('spacing.2');
 
     .title-wrapper,
     h2 {
       @apply w-label-1;
-      display: inline-flex;
-      gap: theme('spacing.2');
+      display: inline;
       margin: 0;
       vertical-align: middle;
-      align-items: center;
 
       a {
         color: inherit;
@@ -246,6 +242,11 @@ ul.listing {
           color: theme('colors.text-link-default');
         }
       }
+    }
+
+    .icon-folder {
+      margin: 3px 0.3em 0 0;
+      vertical-align: top;
     }
   }
 
@@ -356,10 +357,6 @@ ul.listing {
     padding-inline-start: 20px;
   }
 
-  .unpublished .title-wrapper {
-    opacity: 0.7;
-  }
-
   .w-status {
     margin: 0;
     margin-inline: 0;
@@ -368,6 +365,79 @@ ul.listing {
   &.images img {
     @include transition(border-color 0.2s ease);
     border: 3px solid theme('colors.surface-page');
+  }
+
+  &--dashboard {
+    margin-bottom: 0;
+
+    tbody {
+      border-bottom: 0;
+    }
+
+    td:first-child {
+      padding-inline-start: theme('spacing.6');
+    }
+
+    td:last-child {
+      padding-inline-end: theme('spacing.6');
+    }
+
+    .title a {
+      font-weight: theme('fontWeight.medium');
+    }
+
+    .w-status--label {
+      float: inline-end;
+      font-size: inherit;
+    }
+
+    .indicator .icon {
+      padding: 0;
+    }
+
+    .privacy-indicator {
+      margin-inline-end: theme('spacing.2');
+
+      // Adjust icon size to closely match the appearance of the adjacent 'locked' icon
+      .icon-no-view {
+        width: 1.1em;
+        height: 1.1em;
+      }
+    }
+
+    .tasks {
+      text-wrap: nowrap;
+    }
+
+    .actions li {
+      float: inline-end;
+    }
+
+    @include media-breakpoint-down(md) {
+      display: grid;
+
+      tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: theme('spacing.2');
+        padding: theme('spacing.5');
+      }
+
+      td,
+      td:first-child,
+      td:last-child {
+        padding: 0;
+      }
+
+      .title {
+        width: 100%;
+      }
+
+      .actions-container {
+        margin-inline-start: auto;
+      }
+    }
   }
 }
 
@@ -579,8 +649,8 @@ table.listing {
     }
 
     &:has(
-        td:first-child input[type='checkbox'],
-        th:first-child input[type='checkbox']
+        td:first-child input[type='checkbox']:only-child,
+        th:first-child input[type='checkbox']:only-child
       ) {
       // Bulk actions, match the width of the header spacing up until
       // the page title (final breadcrumb item):
@@ -601,8 +671,8 @@ table.listing {
     // custom ordering is active, as the padding to match the breadcrumbs is
     // already handled by the first column.
     &:has(
-        td:first-child input[type='checkbox'],
-        th:first-child input[type='checkbox'],
+        td:first-child input[type='checkbox']:only-child,
+        th:first-child input[type='checkbox']:only-child,
         .ord
       ) {
       th:nth-child(2),
@@ -615,17 +685,19 @@ table.listing {
     // - no nice padding is applied,
     // - we're not in a report listing,
     // - we're not in the editor view,
+    // - we're not in the dashboard view,
     // and:
     // - no bulk actions are present,
     // - we're not in the "custom ordering" mode,
     // then apply the same 80px padding via the first column's left padding.
-    &:not(.nice-padding &, .report &, .editor-view &):not(
+    &:not(.nice-padding &, .report &, .editor-view &, .w-dashboard &):not(
         :has(
-            td:first-child input[type='checkbox'],
-            th:first-child input[type='checkbox'],
+            td:first-child input[type='checkbox']:only-child,
+            th:first-child input[type='checkbox']:only-child,
             .ord
           )
       ) {
+      // stylelint-disable-next-line selector-max-specificity
       th:first-child,
       td:first-child {
         padding-inline-start: theme('spacing.20');

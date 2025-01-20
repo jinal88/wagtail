@@ -1,11 +1,14 @@
+import warnings
+
+from django.conf import settings
 from django.urls import reverse
 from django.utils.text import capfirst
 from django.utils.translation import gettext_lazy, ngettext
 
-from wagtail import hooks
 from wagtail.admin.ui.components import Component
-from wagtail.admin.userbar import AccessibilityItem
+from wagtail.admin.userbar import AccessibilityItem, apply_userbar_hooks
 from wagtail.models import DraftStateMixin, LockableMixin, Page, ReferenceIndex
+from wagtail.utils.deprecation import RemovedInWagtail70Warning
 
 
 class BaseSidePanel(Component):
@@ -237,6 +240,7 @@ class StatusSidePanel(BaseSidePanel):
 
 class PageStatusSidePanel(StatusSidePanel):
     def __init__(self, *args, **kwargs):
+        self.parent_page = kwargs.pop("parent_page", None)
         super().__init__(*args, **kwargs)
         if self.object.pk:
             self.usage_url = reverse("wagtailadmin_pages:usage", args=(self.object.pk,))
@@ -267,6 +271,9 @@ class PageStatusSidePanel(StatusSidePanel):
     def get_context_data(self, parent_context):
         context = super().get_context_data(parent_context)
         page = self.object
+
+        if self.parent_page:
+            context["parent_page"] = self.parent_page
 
         if page.id:
             context.update(
@@ -321,8 +328,8 @@ class ChecksSidePanel(BaseSidePanel):
     def get_axe_configuration(self):
         # Retrieve the Axe configuration from the userbar.
         userbar_items = [AccessibilityItem()]
-        for fn in hooks.get_hooks("construct_wagtail_userbar"):
-            fn(self.request, userbar_items)
+        page = self.object if issubclass(self.model, Page) else None
+        apply_userbar_hooks(self.request, userbar_items, page)
 
         for item in userbar_items:
             if isinstance(item, AccessibilityItem):
@@ -350,8 +357,23 @@ class PreviewSidePanel(BaseSidePanel):
         super().__init__(object, request)
         self.preview_url = preview_url
 
+    @property
+    def auto_update_interval(self):
+        if hasattr(settings, "WAGTAIL_AUTO_UPDATE_PREVIEW"):
+            warnings.warn(
+                "`WAGTAIL_AUTO_UPDATE_PREVIEW` is deprecated. "
+                "Set `WAGTAIL_AUTO_UPDATE_PREVIEW_INTERVAL = 0` to disable "
+                "auto-update for previews.",
+                RemovedInWagtail70Warning,
+            )
+            if not settings.WAGTAIL_AUTO_UPDATE_PREVIEW:
+                return 0
+
+        return getattr(settings, "WAGTAIL_AUTO_UPDATE_PREVIEW_INTERVAL", 500)
+
     def get_context_data(self, parent_context):
         context = super().get_context_data(parent_context)
         context["preview_url"] = self.preview_url
         context["has_multiple_modes"] = len(self.object.preview_modes) > 1
+        context["auto_update_interval"] = self.auto_update_interval
         return context
